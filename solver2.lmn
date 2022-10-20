@@ -39,13 +39,24 @@
 
 %--------------------------------------------------------------------------------------------------------------------
 %example formula4
-% 3つ以上の足し算をどうする？？ →　2項の足し算に置き換えて考える？？？
+% これくらいならでる
 %--------------------------------------------------------------------------------------------------------------------
 %% x1 + x2 = x3 /\ x4 + x2 = r1 /\ r1 + x5 = r2 /\ x6 + r2 = x7 /\ r3 = x4 + x5 /\ x1 = r3 + x6　 
-name("x1",!H1), name("x2",!H2), name("x3",!H3),name("x4",!H4), name("x5",!H5), name("x6",!H6),name("r1",!R1).
-eq(add(!H1,!H2),!H3), eq(add(!H4,!H2),!R1),eq(add(!R1,!H5),!R2), eq(add(!H6,!R2),!H7), eq(!R3, add(!H4,!H5)), eq(!H1,add(!R3,!H6)).
-%% => x3 = x7
-q(eq(!H3,!H7)).
+% name("x1",!H1), name("x2",!H2), name("x3",!H3),name("x4",!H4), name("x5",!H5), name("x6",!H6),name("r1",!R1).
+% eq(add(!H1,!H2),!H3), eq(add(!H4,!H2),!R1),eq(add(!R1,!H5),!R2), eq(add(!H6,!R2),!H7), eq(!R3, add(!H4,!H5)), eq(!H1,add(!R3,!H6)).
+% %% => x3 = x7
+% q(eq(!H3,!H7)).
+%--------------------------------------------------------------------------------------------------------------------
+
+%--------------------------------------------------------------------------------------------------------------------
+%example formula5
+% 前件が成り立たない
+%--------------------------------------------------------------------------------------------------------------------
+%% x1 = x2 /\ x1 = 1 /\ x2 = 0
+name("x1",!H1), name("x2",!H2), name("x3",!H3),name("x4",!H4).
+eq(!H1,!H2), eq(!H1,1),eq(!H2,0).
+%% => x3 = x4
+q(eq(!H3,!H4)).
 %--------------------------------------------------------------------------------------------------------------------
 
 
@@ -59,6 +70,12 @@ leq_transitivity@@ leq(!X,!Y), leq(!Y,!Z)\ :-uniq(!X,!Y,!Z) | leq(!X,!Z).
 % less_reflexivity@@ less(!X,!X):- false.
 % less_antisymmetry@@ less(!X,!Y), less(!Y,!X) :- false.
 % less_transitivity@@ less(!X,!Y), less(!Y,!Z)\ :-uniq(!X,!Y,!Z) | less(!X,!Z).
+
+% one variable has 2 or more integer
+n(N,!X), n(M,!X) :- N =\= M | antecedent(false).
+
+% two variable has same integer
+n(N,!X) \ n(M,!Y) :- N =:= M | !X >< !Y.
 
 %integer addition.
 hh_add@@ L = add(!X,!Y), n(N,!X), n(M,!Y) :- A = N + M|L = A.
@@ -83,8 +100,6 @@ eq3@@ eq(!A, add(N,!X)), eq(!B, add(M,!X)) :- N =:= M | !A >< !B.
 eq4@@ eq(!A, add(!X,!Y)), eq(!B, add(!X,!Y)) :- !A >< !B.
 eq5@@ eq(!A, add(!X,!Y)), eq(!B, add(!Y,!X)) :- !A >< !B.
 
-n(N,!X) \ n(M,!Y) :- N =:= M | !X >< !Y.
-
 %%% 足し算の順番を変える
 %%% 同じ意味のものを上のルールで削除するので、これを上に持っていくと動かないことがある?
 %%% e.g. eq(add(!H1,!H2),!H3),eq(!R3, add(!H4,!H5)), eq(!H1,add(!R3,!H6)).
@@ -106,6 +121,8 @@ L = and(true, true) :- L = true.
 L = eq(name(S,!X), name(S2, !Y)) :- string(S), string(S2), !X = !Y | L = true.
 L = eq(!X,!Y) :- !X = !Y | L = true.
 
+%antecedent is false
+true@@ q(C), antecedent(false) :- ground(C) | q(true).
 
 % failure
 fail@@ q(C) :- ground(C) | q(false).
