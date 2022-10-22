@@ -1,0 +1,243 @@
+\chapter{設計}
+\section{今回書いたソルバの概要}
+事実 (fact) を宣言し，入力した質問 (question) の真偽を判定する．この時，事実が充足不可能なら必ず真を返す．\\
+$\sim$  全ての変数について，事実 $\implies$ 質問 を判定する．
+\begin{itemize}
+    \item 扱う制約は，自然数，変数，$+$，$=$，($\leq$) からなる．
+\end{itemize}
+
+\begin{table}[h]
+    \centering
+    \small
+    \begin{tabular}{ccc|c|cr}
+        $t$ & : & $\mathbb{N}$ & var & $t + t$ & (term)
+    \end{tabular}
+\end{table}
+
+\begin{table}[h]
+    \centering
+    \small
+    \begin{tabular}{ccc|cr}
+        $af$ & : & ($t \leq t$) & $t=t$ & (atomic formula)
+    \end{tabular}
+\end{table}
+
+\begin{table}[h]
+    \centering
+    \small
+    \begin{tabular}{ccc|cr}
+        $f$ & : & $af$ &$f \wedge f$ & (formula)
+    \end{tabular}
+\end{table}
+
+\section{実装}
+今回の実装では，変数はハイパーリンクで表現して，同じハイパーリンクに属する場合は同じ値を持つということを表現している．
+例えば，
+\begin{center}
+    facts: $ x_1 = x_2 \wedge x_3 = x_4$\\
+\end{center}
+が与えられた場合，$x_1 と x_2$，$x_3 と x_4$ はそれぞれ同じハイパーリンクに属する．
+また，数値が決定できる場合は，$ n $ というアトムをかませて，int 型の値をハイパーリンクに登録する．
+\begin{lstlisting}
+    hh_eq@@ eq(!X,!Y) :- !X >< !Y.
+    hi_eq@@ eq(!X,N) :- int(N) | n(N, !X).
+    ih_eq@@ eq(N,!X) :- int(N) | n(N, !X).
+\end{lstlisting}
+
+同じハイパーリンク内に異なる2つの自然数が存在する場合は false.
+\begin{lstlisting}
+    n(N,!X), n(M,!X) :- N =\= M | antecedent(false).
+\end{lstlisting}
+
+異なる2つのハイパーリンクが同じ自然数を持っていた場合は併合する．
+\begin{lstlisting}
+    n(N,!X) \ n(M,!Y) :- N =:= M | !X >< !Y.
+\end{lstlisting}
+
+decision procedures p.86\\
+等式だけではなくて，未解釈の関数についても同じように併合している．
+足し算も式のまま併合するべき？
+
+\textcolor{red}{ここまでは普通に見えるか意見が頂きたいところ}
+
+実装の理想形：性質（公理？）をそのまま書く\\
+pertial order constraint 
+\begin{lstlisting}
+    leq_duplicate@@ leq(!X,!Y), leq(!X,!Y) :- leq(!X,!Y).
+    leq_reflexivity@@ leq(!X,!X):- .
+    leq_antisymmetry@@ leq(!X,!Y), leq(!Y,!X) :- eq(!X,!Y).
+    leq_transitivity@@ leq(!X,!Y), leq(!Y,!Z)\ :-uniq(!X,!Y,!Z) | leq(!X,!Z).   
+\end{lstlisting}
+とか，
+\begin{lstlisting}
+    less_duplicate@@ less(!X,!Y) \ less(!X,!Y) :- .
+    less_reflexivity@@ less(!X,!X):- false.
+    less_antisymmetry@@ less(!X,!Y), less(!Y,!X) :- false.
+    less_transitivity@@ less(!X,!Y), less(!Y,!Z)\ :-uniq(!X,!Y,!Z) | less(!X,!Z).
+\end{lstlisting}
+みたいな形．
+\url{https://en.wikipedia.org/wiki/Inequality_(mathematics)}
+
+
+decision procedures p.86\\
+等式理論において，
+\begin{center}
+    $x_1 = x_2 \vee (x_2 = x_3 \wedge x_4 = x_5 \wedge x_5 \neq x_1 \wedge \hbox{\sout{$F(x_1) \neq F(x_3)$}})$
+\end{center}
+の論理和の部分は，ケースを分けて考えると書いてある．
+→ LMNtal だったらどうやる？
+
+例えば，
+\begin{center}
+    $(x_1 = x_2 \vee x_1 = x_3) \wedge (x_2 = x_4 \wedge x_1 \neq x_2)$
+\end{center}
+は，以下に変形できる（Disjunction Normal Form）
+\begin{center}
+    $(x_1 = x_2 \wedge x_2 = x_4 \wedge x_1 \neq x_2) \vee$\\
+    $(x_1 = x_3 \wedge x_2 = x_4 \wedge x_1 \neq x_2)$
+\end{center}
+ここで，今までの方法で単に
+\begin{enumerate}
+    \item !X1 $><$ !X2
+    \item !X2 $><$ !X4
+    \item より，!X1 = !X2 = !X4
+    \item !X1 = !X2 と neq(!X1,!X2) は矛盾するので 第1節が unsatisfiable.
+\end{enumerate}
+とすると，第2節も unsatisfiable になる（併合が残ってしまうので）
+
+\begin{itemize}
+    \item 解決策の案
+\end{itemize}
+DNF（Disjunction Normal Form） を仮定して，disjunction 毎に独立な変数名を宣言する．
+つまり，上の式は以下のようにする．
+\begin{center}
+    $(x_1 = x_2 \wedge x_2 = x_4 \wedge x_1 \neq x_2) \vee$\\
+    $(x_{1_1} = x_{1_3} \wedge x_{1_2} = x_{1_4} \wedge x_{1_1} \neq x_{1_2})$
+\end{center}
+さらに，同じ節の等式は，同じハイパーリンクに属するとする．
+すると，以下のようにプログラムを書き換えると，できそう？
+or の埋め込み（3節以上の or ）もできるようになっている．
+（できるというのは，充足可能か判定するということ．量化子はまだ考えていない←まだ読めていないが，
+量化子はうまく除去できるのかな～という期待 quantifier elimination という言葉をよく見るので）
+\begin{lstlisting}
+eq(!X1,!X2,!H1), eq(!X2,!X3,!H1), neq(!X1,!X2,!H1).
+eq(!X1_1,!X1_3,!H2), eq(!X1_2,!X1_4,!H2), neq(!X1_1,!X1_2,!H2).
+ans = or(!H1,!H2).
+
+%or
+Ret = or(!X,C), unsat(!X) :- Ret = or(unsat,C).
+Ret = or(C,!X), unsat(!X) :- Ret = or(C,unsat).
+Ret = or(unsat,unsat):- Ret = unsat.
+Ret = or(sat,C) :- ground(C) | Ret = sat.
+Ret = or(C,sat) :- ground(C) | Ret = sat.
+
+%neq
+neq(!X,!Y,!H) :- !X = !Y | unsat(!H).
+
+% one variable has 2 or more integer
+n(N,!X,!H), n(M,!X,!H) :- N =\= M | unsat(!H).
+
+% two variable has same integer
+n(N,!X) \ n(M,!Y) :- N =:= M | !X >< !Y.
+
+%equality
+hh_eq@@ eq(!X,!Y,!H) :- !X >< !Y.
+hi_eq@@ eq(!X,N,!H) :- int(N) | n(N,!X,!H).
+ih_eq@@ eq(N,!X,!H) :- int(N) | n(N,!X,!H).
+
+%sat
+%全ての伝播が終わって，unsat でなければ sat
+Ret = or(!X,C) :- ground(C) | Ret = sat.
+Ret = or(C,!X) :- ground(C) | Ret = sat.
+\end{lstlisting}
+
+さっきまでは，DNFに対する標準的な処理＋equality, inequality\\
+ここからは，線形論理が入る．（decision procedures p.97~）
+
+線形論理のシンタックスは以下の通り．ドメインは整数
+\begin{center}
+    $formula\: :\: formula\wedge formula \:|\: (formula) \:|\: atom$\\
+    $op \::\: = \:|\: \leq \:|\: <$\\
+    $sum \::\: term \:|\: sum+term$\\
+    $term \::\: identifier \:|\: constant \:|\: constant \: identifier$
+\end{center}
+$identifier$ は，整数上の変数，$constant$ は整数定数．
+
+decision procedures p.98
+Linear Arithmetic の ソルバ
+%integer linear problems は 5.3 でカバー
+\begin{itemize}
+    \item Simplex: 数値最適化のための最も古いアルゴリズムの1つ．実数上の線形制約の論理積を与えて，目的関数の最適値を求める．
+    \item general Simplex: 目的関数を与えない Simplex．充足可能かどうかを決定する．
+    \item Fourier-Motzkin variable elimination: Simplex より効率は劣るが，実装が比較的容易．実数上の線形制約の論理積の充足可能性を決定．
+    \item Omega test: Simplex より効率は劣るが，実装が容易．整数上の線形制約の論理積の充足可能性を決定．
+\end{itemize}
+
+omega test について考えていく．
+
+入力は以下の形の論理積．
+\begin{center}
+    $ \sum_{i=1}^na_ix_i=b$ or $\sum_{i=1}^na_ix_i\leq b$
+\end{center}
+例えば以下のような式が当てはまる．
+\begin{center}
+    $ 2x_1 + 3x_2 = 10 \wedge x_1 + -1x_2\leq 0$
+\end{center}
+係数 $a_i$ は整数を仮定．（最小公倍数をかけて全部整数係数になるように変形する．）
+
+手順1：equality の左辺の係数（$a_1,\dots,a_n$）の最大公約数 $g$ で両辺を割る．この時，$g$ が $b$ を割り切れなかったら unsat.\\
+手順2：inequality の左辺の係数（$a_1,\dots,a_n$）の最大公約数 $g$ で両辺を割る．右辺は小数点以下切り捨て（普通の int 型の割り算）．
+
+正規化部分．
+\begin{lstlisting}
+    %%mul(constant, !Identifier, !Hlink)
+    %% hlink is unique for each equality
+    gcd0@@ Ret = mul(N,!X,!E) \:- int(N), uniq(!X,!E) | gcd(N,!E).
+    
+    gcd1@@ gcd(0,!H) :- .
+    gcd2@@ gcd(N,!H) \ gcd(M,!H) :- N =< M, G = M-N | gcd(G,!H).
+    
+    %normalization using gcd of identifiers 
+    %omega test の入力の右辺は整数定数のはずなので，等式，不等式ごとに n(N,!E) が1つ繋がってるはず
+    norm_eq_unsat@@ eq(C,n(N,!E),!H), gcd(G,!E) :- ground(C), N mod G =\= 0 | unsat(!H).
+    norm1@@ gcd(G,!E) \ Ret = mul(N,!X,!E):- A = N / G, uniq(G,!X,!E) | Ret = mul(A,!X,!E).
+    norm2@@ Ret = n(N,!E), gcd(G,!E) :- A = N / G | Ret = n(A,!E).
+\end{lstlisting}
+
+手順3：係数が 1, -1 となるような変数を探す．
+一般性を損なわないために，$n=j, |a_j|=1$とすると，
+\begin{center}
+    $x_n = b/a_n - \sum_{i=1}^{n-1}a_i/a_n \:x_i$
+\end{center}
+で，全ての$x_n$ を右辺に置き換える．
+→LMNtal だったらどうやる？？？？
+
+例えば，
+\begin{center}
+    $3x_1 + 3x_2 = 9 \wedge 2x_1 + 5x_2 = 12$
+\end{center}
+なら，正規化して
+\begin{center}
+    $x_1 + x_2 = 3 \wedge 2x_1 + 5x_2 = 12$
+\end{center}
+1つ目の等式を変形して
+\begin{center}
+    $x_1 = 3 + -1x_2$
+\end{center}
+だから，2つ目の式に代入して，
+\begin{center}
+    \begin{eqnarray}
+        6 + -2x_2 + 5x_2 &=& 12\\
+        3x_2 &=& 6\\
+        x_2 &=& 2
+    \end{eqnarray}
+\end{center}
+より充足
+
+
+ここで、疑問．
+変数を消去した後の式は，再び正規形にするべきか．
+→多分するべきだと思っている
+
+% 4x + 3y = 10 は充足可能か
+

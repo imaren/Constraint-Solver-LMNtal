@@ -1,0 +1,85 @@
+
+% eq(!X1,!X2,!H1), eq(!X2,!X3,!H1), neq(!X1,!X2,!H1).
+% eq(!X1_1,!X1_3,!H2), eq(!X1_2,!X1_4,!H2), neq(!X1_1,!X1_2,!H2).
+% eq(!X2_1,!X2_2,!H3), eq(!X2_2,!X2_3,!H3), neq(!X2_1,!X2_2,!H3).
+% ans = or(!H1,or(!H2,!H3)).
+
+% eq(add(mul(3,!X1,!E1,!H1),add(mul(3,!X2,!E1,!H1),mul(3,!X3,!E1,!H1))),n(10,!E1),!H1).
+% leq(add(mul(3,!X1_1,!E2),mul(6,!X1_2,!E2)),n(7,!E2),!H2).
+% ans = or(!H1,unsat).
+
+
+eq(add(mul(3,!X1,!E1,!H1),mul(3,!X2,!E1,!H1)),n(9,!E1),!H1).
+eq(add(mul(2,!X1,!E2,!H1),mul(5,!X2,!E2,!H1)),n(10,!E2),!H1).
+ans = or(!H1,unsat).
+
+%omega test
+
+%gcd for normalization
+%% mul(constant, !Identifier, !Hlink)
+%% hlink is unique for each equality
+gcd0@@ Ret = mul(N,!X,!E,!H):- int(N), uniq(!X,!E) | gcd(N,!E).
+
+gcd1@@ gcd(0,!H) :- .
+gcd2@@ gcd(N,!H) \ gcd(M,!H) :- N =< M, G = M-N | gcd(G,!H).
+
+%% normalization using gcd of identifiers 
+%% omega test の入力の右辺は整数定数のはずなので，等式，不等式ごとに n(N,!E) が1つ繋がってるはず
+norm_eq_unsat@@ eq(C,n(N,!E),!H), gcd(G,!E) :- ground(C), N mod G =\= 0 | unsat(!H).
+norm1@@ gcd(G,!E) \ Ret = mul(N,!X,!E,!H):- A = N / G, uniq(G,!X,!E) | Ret = mul(A,!X,!E,!H).
+norm2@@ Ret = n(N,!E), gcd(G,!E) :- A = N / G | Ret = n(A,!E).
+
+%% 係数が1となるような変数があったら変形して置き換える．
+%% x_n = b - (x_1,...,x_n-1) <- n = j, |a_j|=1 のとき
+eliminate0@@ eliminate(!X1,!E,!H) \  Ret = mul(N,!X2,!E,!H) :- A = -N | Ret = del, emul(A,!X2,!E,!H).
+eliminate2@@ eliminate(!X1,!E1,!H), Ret = mul(N1,!X1,!E2,!H), emul(N2,!X2,!E1,!H) \ eq(L,n(N4,!E2),!H)
+    :- !E1 \= !E2, !X1 \= !X2, A = N1 * N2, uniq(!X1,!X2,!E2,H) 
+    | eq(add(mul(A,!X2,!E2,!H),L),n(N4,!E2),!H).
+%% 右辺 bのやつ
+eliminate3@@ eliminate(!X1,!E1,!H), Ret = mul(N1,!X1,!E2,!H), eq(C1,n(N2,!E1),!H) \ eq(C2,n(N3,!E2),!H)
+    :- !E1 \= !E2, A = N3 - N1 * N2, uniq(!X1,!E2,!H) 
+    | eq(C2,n(A,!E2),!H).
+eliminate_fin_right@@ eliminate(!X1,!E1,!H) \ Ret = add(C,mul(N,!X1,!E2,!H)) :- int(N) | Ret = C .
+eliminate_fin_left@@ eliminate(!X1,!E1,!H) \ Ret = add(mul(N,!X1,!E2,!H),C) :- int(N) | Ret = C .
+
+%% 同じ変数が2つ出てきたらまとめる
+join@@ Ret = mul(N1,!X,!E,!H), Ret2 = add(mul(N2,!X,!E,!H),C) :- A = N1 + N2 | Ret = mul(A,!X,!E,!H), Ret2 = C.
+
+find_coef_1@@ Ret = mul(1,!X,!E,!H) :- uniq(!E) |Ret = del, eliminate(!X,!E,!H).
+% find_aj_1@@ Ret = mul(1,!X,!E,!H) :- uniq(!E) |Ret = mul(0,!X,!E,!H), eliminate(!X,!E,!H).
+
+%smmetric mod
+symmetric_mod1@@ Ret = symod(N,M):- A = N mod M, 2*A < M | Ret = A.
+symmetric_mod2@@ Ret = symod(N,M):- A = (N mod M) - M,  | Ret = A.
+
+%or
+Ret = or(!X,C), unsat(!X) :- Ret = or(unsat,C).
+Ret = or(C,!X), unsat(!X) :- Ret = or(C,unsat).
+Ret = or(unsat,unsat):- Ret = unsat.
+Ret = or(sat,C) :- ground(C) | Ret = sat.
+Ret = or(C,sat) :- ground(C) | Ret = sat.
+
+%neq
+neq(!X,!Y,!H) :- !X = !Y | unsat(!H).
+
+% one variable has 2 or more integer
+n(N,!X,!H), n(M,!X,!H) :- N =\= M | unsat(!H).
+
+% two variable has same integer
+n(N,!X) \ n(M,!Y) :- N =:= M | !X >< !Y.
+
+%equality
+hh_eq@@ eq(!X,!Y,!H) :- !X >< !Y.
+hi_eq@@ eq(!X,N,!H) :- int(N) | n(N,!X,!H).
+ih_eq@@ eq(N,!X,!H) :- int(N) | n(N,!X,!H).
+
+%sat
+%全ての伝播が終わって，unsat でなければ sat
+Ret = or(!X,C) :- ground(C) | Ret = sat.
+Ret = or(C,!X) :- ground(C) | Ret = sat.
+
+
+
+
+
+

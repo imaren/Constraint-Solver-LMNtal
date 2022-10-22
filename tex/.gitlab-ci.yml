@@ -1,0 +1,6 @@
+build:
+  tags:
+    - shell
+  script:
+    # murolでmakeが使える必要がある
+    - make ondocker
