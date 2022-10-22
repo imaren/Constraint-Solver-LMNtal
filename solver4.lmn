@@ -18,7 +18,7 @@ ans = or(!H1,unsat).
 %gcd for normalization
 %% mul(constant, !Identifier, !Hlink)
 %% hlink is unique for each equality
-gcd0@@ Ret = mul(N,!X,!E,!H)\:- int(N), uniq(!X,!E) | gcd(N,!E).
+gcd0@@ Ret = mul(N,!X,!E,!H):- int(N), uniq(!X,!E) | gcd(N,!E).
 
 gcd1@@ gcd(0,!H) :- .
 gcd2@@ gcd(N,!H) \ gcd(M,!H) :- N =< M, G = M-N | gcd(G,!H).
