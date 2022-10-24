@@ -9,13 +9,13 @@
 % ans = or(!H1,unsat).
 
 
-% eq(add(mul(3,!X1,!E1,!H1),mul(3,!X2,!E1,!H1)),n(9,!E1),!H1).
-% eq(add(mul(2,!X1,!E2,!H1),mul(5,!X2,!E2,!H1)),n(10,!E2),!H1).
-% ans = or(!H1,unsat).
-
-eq(add(mul(1,!X1,!E1,!H1),add(mul(2,!X2,!E1,!H1),mul(3,!X3,!E1,!H1))),n(4,!E1),!H1).
-eq(add(mul(5,!X1,!E2,!H1),add(mul(4,!X2,!E2,!H1),mul(3,!X3,!E2,!H1))),n(8,!E2),!H1).
+eq(add(mul(3,!X1,!E1,!H1),mul(3,!X2,!E1,!H1)),n(9,!E1),!H1).
+eq(add(mul(2,!X1,!E2,!H1),mul(5,!X2,!E2,!H1)),n(10,!E2),!H1).
 ans = or(!H1,unsat).
+
+% eq(add(mul(1,!X1,!E1,!H1),add(mul(2,!X2,!E1,!H1),mul(3,!X3,!E1,!H1))),n(4,!E1),!H1).
+% eq(add(mul(5,!X1,!E2,!H1),add(mul(4,!X2,!E2,!H1),mul(3,!X3,!E2,!H1))),n(8,!E2),!H1).
+% ans = or(!H1,unsat).
 
 % eq(add(mul(-3,!X1,!E1,!H1),mul(2,!X2,!E1,!H1)),n(0,!E1),!H1).
 % eq(add(mul(3,!X1,!E2,!H1),mul(4,!X2,!E2,!H1)),n(3,!E2),!H1).
@@ -27,6 +27,9 @@ symmetric_mod2@@ Ret = symod(N,M):- A = (N mod M) - M,  | Ret = A.
 
 %add
 add@@ Ret = add(N,M) :- A = N+M | Ret = A.
+
+%前準備：標準形に直す（未実装）現時点では標準形で入力されることを想定している．
+% 標準形：DNF(Disjuncive Normal Form, 論理積の論理和)
 
 %omega test
 
@@ -116,6 +119,8 @@ omega1@@ Ret = mul_n(N,!X,!E,!H) :- int(N) | Ret = mul_o(N,!X,!E,!H), min(N,!X,!
 omega3@@ min(N,!X,!E,!H) :- A = N+1 | m(A,!X,!R,!E,!H).
 
 omega_fin@@ m(M,!X,!R,!E,!H) :- int(M) | fin_omega(!H).
+
+%% 等式が終わったら，不等式を処理する
 
 
 %%整形
