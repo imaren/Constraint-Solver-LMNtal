@@ -22,7 +22,7 @@ gcd0@@ Ret = mul(N,!X,!E,!H)\:- int(N), uniq(!X,!E) | gcd(N,!E).
 
 gcd1@@ gcd(0,!H) :- .
 gcd2@@ gcd(N,!H) \ gcd(M,!H) :- N =< M, G = M-N | gcd(G,!H).
-
+gcd3@@ gcd(1,!H) :- .
 %% normalization using gcd of identifiers 
 %% omega test の入力の右辺は整数定数のはずなので，等式，不等式ごとに n(N,!E) が1つ繋がってるはず
 norm_eq_unsat@@ eq(C,n(N,!E),!H), gcd(G,!E) :- ground(C), N mod G =\= 0 | unsat(!H).

@@ -186,6 +186,14 @@ omega test について考えていく．
 係数 $a_i$ は整数を仮定．（最小公倍数をかけて全部整数係数になるように変形する．）
 
 手順1：equality の左辺の係数（$a_1,\dots,a_n$）の最大公約数 $g$ で両辺を割る．この時，$g$ が $b$ を割り切れなかったら unsat.\\
+補足：
+\begin{center}
+    $ \sum_{i=1}^na_ix_i=b$\\
+    について\\
+    $b \:mod\: gcd(a_1,\dots,a_n) = 0 \Leftrightarrow 整数解が存在する$
+\end{center}
+
+
 手順2：inequality の左辺の係数（$a_1,\dots,a_n$）の最大公約数 $g$ で両辺を割る．右辺は小数点以下切り捨て（普通の int 型の割り算）．
 
 正規化部分．
@@ -237,7 +245,65 @@ omega test について考えていく．
 
 ここで、疑問．
 変数を消去した後の式は，再び正規形にするべきか．
-→多分するべきだと思っている
+→するべき
+
+これは，mul, mul\_n, mul\_pという3種類のアトムを用意することによって，解決．
+mul になったら gcd を求めて正規化する．
+mul\_n は正規化済みであることを表す（gcd アトムをそれ以上生成しないため）
+elimination が起こったら，一旦 mul\_n を mul\_r に変換して，全部変換した後に mul\_p を mul に一斉に変換する
+（mul に変換しながら進めると上にある gcd ルールが先に発火して大変なことになる）
+elimination が起こったら token\_1 アトムが生成されて，全部変換したら token\_1 アトムが ready\_1 アトムに変換されて，gcd アトムの生成が終わったら ready\_1 アトムは削除される．
+
+不定方程式は，上に書いたように，gcd で割り切れたら整数解を持つし，割り切れなかったら整数解を持たないので，式の conjunction が全て処理し終わった後（式が1つになったとき）に
+解の判定をすれば，充足可能か決定できる．
+ということで変数消去によって式を減らしていっている．
+
+手順4:無理やり係数が 1 か -1 の式を作る\\
+係数が 1, -1 のどちらかであるような変数がなくなってしまったら，
+\begin{enumerate}
+    \item 絶対値が最も小さい非ゼロの係数を持つ変数を選ぶ
+    \item いくつかの係数が 1 か -1 になるまで繰り返し式変形を行う
+    \item 係数の絶対値が 1 になった変数は先ほどのように削除する
+\end{enumerate} 
+
+symmetric mod を以下のように定義
+\begin{center}
+    $ a \: \widehat{mod}\: b = 
+    \begin{cases}
+        a \:mod\: b & :\:a \:mod\: b < b/2\\
+        (a\:mod\:b)-b & :otherwise
+    \end{cases}
+    $
+\end{center}
+
+\begin{center}
+    $m = a_n + 1 \:(a_n は全項の中で最小の係数)$
+\end{center}
+として，次の数式を追加．（LMNtal で実装するときは，変換後の式を基にしてアトムを追加？）
+\begin{center}
+    $\sum_{i=1}^n(a_i \:\widehat{mod}\: m)x_i = m \sigma + b \:\widehat{mod}\: m$
+    $a_i \:\widehat{mod}\: m = -1$ より，
+    $x_n = -m \sigma - b \:\widehat{mod}\:m + \sum_{i=1}^{n-1}(a_i \:\widehat{mod}\: m)x_i$
+\end{center}
+この最後の式を使って，他の全ての等式において，変数 $x_n$ を右辺で置き換える．
+それか，decision procedures p.118 の変形を用いて（m で割るところまですっ飛ばして）以下で置き換える
+\begin{center}
+    $-a_n\sigma + \sum_{i=1}^{n-1}(\lfloor a_i/m + 1/2 \rfloor + (a_i \:\widehat{mod}\: m))x_i = 
+    \lfloor b/m + 1/2 \rfloor + (b \:\widehat{mod}\: m)$
+\end{center}
+つまり，$x_n$ を表す mul\_ アトム以外の全部の mul\_ アトムの係数部分を $\lfloor a_i/m + 1/2 \rfloor + (a_i \:\widehat{mod}\: m)$
+で置き換えてしまって、右辺も置き換えて，$x_n$ を表す mul\_ アトムは $-a_n\sigma$ に変えてやる
+
+LMNtal 実装の方針としては，
+\begin{enumerate}
+    \item 全ての mul_n アトムを(別の名前を付けて)複製する．この時，uniq は使えない（この手順は繰り返し行う可能性がある）ので mul_n は何か違う名前に変えておく
+    \item 複製したアトム2つにマッチして係数が小さい方を消す．（最終的に係数が一番小さい項だけ残る）
+    \item $m = a_n + 1$ を表すアトムを生成する．(2番で残ったアトムを書き換える)
+    \item 何か違う名前になってる mul_n と $m=a_n+1$を表すアトムを使って全部置き換える（この時さらに違う名前にする．mul_n に戻すとまだ危ないカモ？）
+\end{enumerate}
+とりあえず，ルールの依存関係を考慮して，2->3, 4->1, 1→3 になるようにすれば，直感的には4番で mul_n に戻せそう
+4->2->1→3 の順でルールを書く
+
 
 % 4x + 3y = 10 は充足可能か
 

@@ -9,55 +9,124 @@
 % ans = or(!H1,unsat).
 
 
-eq(add(mul(3,!X1,!E1,!H1),mul(3,!X2,!E1,!H1)),n(9,!E1),!H1).
-eq(add(mul(2,!X1,!E2,!H1),mul(5,!X2,!E2,!H1)),n(10,!E2),!H1).
+% eq(add(mul(3,!X1,!E1,!H1),mul(3,!X2,!E1,!H1)),n(9,!E1),!H1).
+% eq(add(mul(2,!X1,!E2,!H1),mul(5,!X2,!E2,!H1)),n(10,!E2),!H1).
+% ans = or(!H1,unsat).
+
+eq(add(mul(1,!X1,!E1,!H1),add(mul(2,!X2,!E1,!H1),mul(3,!X3,!E1,!H1))),n(4,!E1),!H1).
+eq(add(mul(5,!X1,!E2,!H1),add(mul(4,!X2,!E2,!H1),mul(3,!X3,!E2,!H1))),n(8,!E2),!H1).
 ans = or(!H1,unsat).
 
-%omega test
-
-%gcd for normalization
-%% mul(constant, !Identifier, !Hlink)
-%% hlink is unique for each equality
-gcd0@@ Ret = mul(N,!X,!E,!H):- int(N), uniq(!X,!E) | gcd(N,!E).
-
-gcd1@@ gcd(0,!H) :- .
-gcd2@@ gcd(N,!H) \ gcd(M,!H) :- N =< M, G = M-N | gcd(G,!H).
-
-%% normalization using gcd of identifiers 
-%% omega test の入力の右辺は整数定数のはずなので，等式，不等式ごとに n(N,!E) が1つ繋がってるはず
-norm_eq_unsat@@ eq(C,n(N,!E),!H), gcd(G,!E) :- ground(C), N mod G =\= 0 | unsat(!H).
-norm1@@ gcd(G,!E) \ Ret = mul(N,!X,!E,!H):- A = N / G, uniq(G,!X,!E) | Ret = mul(A,!X,!E,!H).
-norm2@@ Ret = n(N,!E), gcd(G,!E) :- A = N / G | Ret = n(A,!E).
-
-%% 係数が1となるような変数があったら変形して置き換える．
-%% x_n = b - (x_1,...,x_n-1) <- n = j, |a_j|=1 のとき
-eliminate0@@ eliminate(!X1,!E,!H) \  Ret = mul(N,!X2,!E,!H) :- A = -N | Ret = del, emul(A,!X2,!E,!H).
-eliminate2@@ eliminate(!X1,!E1,!H), Ret = mul(N1,!X1,!E2,!H), emul(N2,!X2,!E1,!H) \ eq(L,n(N4,!E2),!H)
-    :- !E1 \= !E2, !X1 \= !X2, A = N1 * N2, uniq(!X1,!X2,!E2,H) 
-    | eq(add(mul(A,!X2,!E2,!H),L),n(N4,!E2),!H).
-%% 右辺 bのやつ
-eliminate3@@ eliminate(!X1,!E1,!H), Ret = mul(N1,!X1,!E2,!H), eq(C1,n(N2,!E1),!H) \ eq(C2,n(N3,!E2),!H)
-    :- !E1 \= !E2, A = N3 - N1 * N2, uniq(!X1,!E2,!H) 
-    | eq(C2,n(A,!E2),!H).
-eliminate_fin_right@@ eliminate(!X1,!E1,!H) \ Ret = add(C,mul(N,!X1,!E2,!H)) :- int(N) | Ret = C .
-eliminate_fin_left@@ eliminate(!X1,!E1,!H) \ Ret = add(mul(N,!X1,!E2,!H),C) :- int(N) | Ret = C .
-
-%% 同じ変数が2つ出てきたらまとめる
-join@@ Ret = mul(N1,!X,!E,!H), Ret2 = add(mul(N2,!X,!E,!H),C) :- A = N1 + N2 | Ret = mul(A,!X,!E,!H), Ret2 = C.
-
-find_coef_1@@ Ret = mul(1,!X,!E,!H) :- uniq(!E) |Ret = del, eliminate(!X,!E,!H).
-% find_aj_1@@ Ret = mul(1,!X,!E,!H) :- uniq(!E) |Ret = mul(0,!X,!E,!H), eliminate(!X,!E,!H).
+% eq(add(mul(-3,!X1,!E1,!H1),mul(2,!X2,!E1,!H1)),n(0,!E1),!H1).
+% eq(add(mul(3,!X1,!E2,!H1),mul(4,!X2,!E2,!H1)),n(3,!E2),!H1).
+% ans = or(!H1,unsat).
 
 %smmetric mod
 symmetric_mod1@@ Ret = symod(N,M):- A = N mod M, 2*A < M | Ret = A.
 symmetric_mod2@@ Ret = symod(N,M):- A = (N mod M) - M,  | Ret = A.
 
+%add
+add@@ Ret = add(N,M) :- A = N+M | Ret = A.
+
+%omega test
+
+%%変数が1つの等式があったら決定できる
+decide1@@ eq(mul(N,!X,!E,!H),n(N2,!E),!H) :- N2 mod N =\= 0 | eq(mul_r(N,!X,!E,!H),n(N2,!E),!H), unsat(!H). 
+decide2@@ eq(mul(N,!X,!E,!H),n(N2,!E),!H) :- N2 mod N =:= 0 | eq(mul_r(N,!X,!E,!H),n(N2,!E),!H), sat(!H). 
+
+ready_norm@@ ready(!E) \ Ret = mul_p(N,!X,!E,!H) :- Ret = mul(N,!X,!E,!H).
+ready_fin@@ ready(!E) :- .
+
+%gcd for normalization
+%% mul(constant, !Identifier, !Hlink)
+%% hlink is unique for each equality
+gcd0@@ Ret = mul(N,!X,!E,!H):- N >= 0| Ret = mul_n(N,!X,!E,!H), gcd(N,!E).
+gcd00@@ Ret = mul(N,!X,!E,!H):- M = -N| Ret = mul_n(N,!X,!E,!H), gcd(M,!E).
+gcd1@@ gcd(0,!H) :- .
+gcd2@@ gcd(N,!H) \ gcd(M,!H) :- N =< M, G = M-N | gcd(G,!H).
+gcd3@@ gcd(1,!H) :- .
+%% normalization using gcd of identifiers 
+%% omega test の入力の右辺は整数定数のはずなので，等式，不等式ごとに n(N,!E) が1つ繋がってるはず
+norm_eq_unsat@@ eq(C,n(N,!E),!H), gcd(G,!E) :- ground(C), N mod G =\= 0 | unsat(!H).
+norm1@@ gcd(G,!E) \ Ret = mul_n(N,!X,!E,!H):- A = N / G, uniq(G,!X,!E) | Ret = mul_n(A,!X,!E,!H).
+norm2@@ Ret = n(N,!E), gcd(G,!E) :- A = N / G | Ret = n(A,!E).
+
+%% omega test の最後のステップが終わったら，係数の絶対値が1となるような変数があるかどうかをチェックするために mul_tmp を mul_n に変換する
+loop_omega@@ fin_omega(!H) \ Ret = mul_tmp(N,!R,!E,!H) :- Ret = mul_n(N,!R,!E,!H).
+loop_omega2@@ fin_omega(!H) :- . 
+
+%% 係数が1となるような変数があったら変形して置き換える．
+%% x_n = b - (x_1,...,x_n-1) <- n = j, |a_j|=1 のとき
+%%% 式を消しちゃうバージョン eliminate0
+% eliminate0@@ eliminate(S,!X1,!E,!H) \  Ret = mul_n(N,!X2,!E,!H) :- A = -N * S | Ret = del, emul(A,!X2,!E,!H).
+%%% 式を消さないバージョン eliminate0
+eliminate0@@ eliminate(S,!X1,!E,!H) \  Ret = mul_n(N,!X2,!E,!H) :- A = -N * S | Ret = mul_r(N,!X2,!E,!H), emul(A,!X2,!E,!H).
+eliminate2@@ eliminate(S,!X1,!E1,!H), Ret = mul_n(N1,!X1,!E2,!H), emul(N2,!X2,!E1,!H) \ eq(L,n(N4,!E2),!H)
+    :- !E1 \= !E2, !X1 \= !X2, A = N1 * N2, uniq(!X1,!X2,!E2,H) 
+    | eq(add(mul_n(A,!X2,!E2,!H),L),n(N4,!E2),!H).
+%% 右辺 bのやつ
+eliminate3@@ eliminate(S,!X1,!E1,!H), Ret = mul_n(N1,!X1,!E2,!H), eq(C1,n(N2,!E1),!H) \ eq(C2,n(N3,!E2),!H)
+    :- !E1 \= !E2, A = (N3 - N1 * N2) * S, uniq(!X1,!E2,!H) 
+    | eq(C2,n(A,!E2),!H).
+%% 変数を削除する
+%% 1回でも正規化に成功していたらトークンを作る．
+eliminate_fin_right@@ eliminate(S,!X1,!E1,!H) \ Ret = add(C,mul_n(N,!X1,!E2,!H)) :- int(N) | Ret = C, token(!E2) .
+eliminate_fin_left@@ eliminate(S,!X1,!E1,!H) \ Ret = add(mul_n(N,!X1,!E2,!H),C) :- int(N) | Ret = C, token(!E2) .
+
+%% 同じ変数が2つ出てきたらまとめる
+join@@ Ret = mul_n(N1,!X,!E,!H), Ret2 = add(mul_n(N2,!X,!E,!H),C) :- A = N1 + N2 | Ret = mul_p(A,!X,!E,!H), Ret2 = C.
+%%
+prep_norm@@ token(!E) \ Ret = mul_n(N,!X,!E,!H) :- Ret = mul_p(N,!X,!E,!H).
+prep_fin@@ token(!E) :- ready(!E).
+
+%%係数 |a_j|=1 を見つける
+%%% 式を消しちゃうバージョン
+% find_coef_1@@ Ret = mul_n(1,!X,!E,!H) :- uniq(!E) |Ret = del, eliminate(1,!X,!E,!H).
+% find_coef_neg1@@ Ret = mul_n(-1,!X,!E,!H) :- uniq(!E) |Ret = del, eliminate(-1,!X,!E,!H).
+%%% 式を保存しておくバージョン
+find_coef_1@@ Ret = mul_n(1,!X,!E,!H) :- uniq(!E) |Ret = mul_r(1,!X,!E,!H), eliminate(1,!X,!E,!H).
+find_coef_neg1@@ Ret = mul_n(-1,!X,!E,!H) :- uniq(!E) |Ret = mul_r(-1,!X,!E,!H), eliminate(-1,!X,!E,!H).
+% find_aj_1@@ Ret = mul(1,!X,!E,!H) :- uniq(!E) |Ret = mul(0,!X,!E,!H), eliminate(!X,!E,!H).
+
+%% 係数の絶対値が 1 のものが無かったら、次のステップ
+%% このとき、制約は mul_n が残っているはず
+%% mul_n を 全部見て、一番小さい係数を持つ変数 x_n を決める
+% \item 全ての mul_n アトムを(別の名前を付けて)複製する．この時，uniq は使えない（この手順は繰り返し行う可能性がある）ので mul_n は何か違う名前に変えておく
+% \item 複製したアトム2つにマッチして係数が小さい方を消す．（最終的に係数が一番小さい項だけ残る）
+% \item $m = a_n + 1$ を表すアトムを生成する．(2番で残ったアトムを書き換える)
+% \item 何か違う名前になってる mul_n と $m=a_n+1$を表すアトムを使って全部置き換える（この時さらに違う名前にする．mul_n に戻すとまだ危ないカモ？）
+
+%係数が 0 の mul が出てくるかもしれないので削除する このルールをどこまで下に追いやれるかは後に考える mul_tmpとかいう名前も後で 
+elim_zero1@@ Ret = add(C,mul_tmp(N,!X1,!E2,!H)) :- N =:= 0 | Ret = C.
+elim_zero2@@ Ret = add(mul_tmp(N,!X1,!E2,!H),C) :- N =:= 0 | Ret = C.
+
+%% 左辺 x_n 以外 等式内に該当する変数が無いと代入できないことに注意
+omega4@@ m(M,!X,!R,!E,!H), Ret2 = mul_o(T,!X,!E2,!H) \ Ret = mul_o(N,!X2,!E2,!H) :- int(T),!X \= !X2, A = (2*N+M)/(2*M), M*N >= 0 | Ret = mul_tmp(add(A,symod(N,M)),!X2,!E2,!H).
+omega4_1@@ m(M,!X,!R,!E,!H), Ret2 = mul_o(T,!X,!E2,!H) \ Ret = mul_o(N,!X2,!E2,!H) :- int(T), !X \= !X2, A = (2*N+M)/(2*M)-1, M*N < 0 | Ret = mul_tmp(add(A,symod(N,M)),!X2,!E2,!H).
+%% 右辺 
+omega4_2@@  m(M,!X,!R,!E,!H), Ret = mul_o(T,!X,!E2,!H) \ eq(C,n(N,!E2),!H) :-  A = (2*N+M)/(2*M), M*N >= 0, uniq(!R,!E2) | eq(C,n(add(A,symod(N,M)),!E2),!H).
+omega4_3@@  m(M,!X,!R,!E,!H), Ret = mul_o(T,!X,!E2,!H) \ eq(C,n(N,!E2),!H) :-  A = (2*N+M)/(2*M)-1, M*N < 0, uniq(!R,!E2) | eq(C,n(add(A,symod(N,M)),!E2),!H).
+%% 左辺 x_n 左辺の x_n は最後
+omega4_4@@ m(M,!X,!R,!E,!H) \ Ret = mul_o(N,!X,!E2,!H) :- int(M), A = -N | Ret = mul_tmp(A,!R,!E2,!H).
+omega2@@ min(N,!X,!E,!H) \ min(M,!X2,!E2,!H) :-N>=0, M>=0, N =< M |.
+omega2_2@@ min(N,!X,!E,!H) \ min(M,!X2,!E2,!H) :-N<0, M<0, N >= M |.
+omega2_3@@ min(N,!X,!E,!H) \ min(M,!X2,!E2,!H) :-N>=0, M<0, N + M < 0 |.
+omega2_4@@ min(M,!X,!E,!H) \ min(N,!X2,!E2,!H) :-N>=0, M<0, N + M > 0 |.
+omega1@@ Ret = mul_n(N,!X,!E,!H) :- int(N) | Ret = mul_o(N,!X,!E,!H), min(N,!X,!E,!H).
+omega3@@ min(N,!X,!E,!H) :- A = N+1 | m(A,!X,!R,!E,!H).
+
+omega_fin@@ m(M,!X,!R,!E,!H) :- int(M) | fin_omega(!H).
+
+
+%%整形
+del@@ Ret = add(del,del):- Ret = del.
+
 %or
-Ret = or(!X,C), unsat(!X) :- Ret = or(unsat,C).
-Ret = or(C,!X), unsat(!X) :- Ret = or(C,unsat).
-Ret = or(unsat,unsat):- Ret = unsat.
-Ret = or(sat,C) :- ground(C) | Ret = sat.
-Ret = or(C,sat) :- ground(C) | Ret = sat.
+or1@@ Ret = or(!X,C), unsat(!X) :- Ret = or(unsat,C).
+or2@@ Ret = or(C,!X), unsat(!X) :- Ret = or(C,unsat).
+or3@@ Ret = or(unsat,unsat):- Ret = unsat.
+or4@@ Ret = or(sat,C) :- ground(C) | Ret = sat.
+or5@@ Ret = or(C,sat) :- ground(C) | Ret = sat.
 
 %neq
 neq(!X,!Y,!H) :- !X = !Y | unsat(!H).
