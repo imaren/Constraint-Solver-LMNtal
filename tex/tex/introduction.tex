@@ -3,19 +3,80 @@
 \begin{itemize}
     \item ハイパーリンクを用いて，制約ソルバを書く．
     \item プレスバーガー算術の範囲の制約を解くためのソルバを LMNtal で実装することを目指す．
-    \item まずは，自前で簡単なソルバを書いた．
-    \item これからの課題：decision procedure を読むなりして， presburger arithmetic のソルバを書く．
+    \item \sout{まずは，自前で簡単なソルバを書いた．}
+    \item \sout{これからの課題：decision procedure を読むなりして， presburger arithmetic のソルバを書く．}
+    \item Decision Procedures を理解しながら整数上の線形算術についてのソルバを書いているので、書けたところまで紹介．
 \end{itemize}
 
 \section{注意}
+\sout{
 今から紹介する方法は，一般と\textcolor{red}{あまりにもかけ離れている可能性}があります.
 去年の春学期に decision procedure を読んだはずですが，それも含めて知識があまりにも抜けていることに気づきました．
 なので，この発表の後は，decision procedure を読んで，まともなソルバを書こうと思っています．
+}
+これからの話は，\textcolor{red}{全て間違っていると思って}聞いて，\textcolor{red}{違和感のある部分は指摘してください}．
 
-これからの話は，\textcolor{red}{全て間違っていると思って}聞いて，\textcolor{red}{違和感のある部分を指摘してください}．
+\section{概要と準備}
+\subsection*{解く問題}
+今回は，以下の問題を解こうとしています．\\
+\begin{itemize}
+    \item 解く：ここでは充足可能かどうかを決定すること
+\end{itemize}
+
+整数上の線形算術．
+\begin{center}
+    $formula\: :\: formula\wedge formula \:|\: (formula) \:|\: atom$\\
+    $atom \::\: sum \: op \: sum$\\
+    $op \::\: = \:|\: \leq \:|\: <$\\
+    $sum \::\: term \:|\: sum+term$\\
+    $term \::\: identifier \:|\: constant \:|\: constant \: identifier$
+\end{center}
+$identifier$ は，整数上の変数，$constant$ は整数定数．
+
+今できているのは，等式だけ
+\begin{center}
+    $formula\: :\: formula\wedge formula \:|\: (formula) \:|\: atom$\\
+    $atom \::\: sum \: op \: sum$\\
+    $op \::\: = \:|\: $\sout{$\leq$}$ \:|\: $\sout{$<$}\\
+    $sum \::\: term \:|\: sum+term$\\
+    $term \::\: identifier \:|\: constant \:|\: constant \: identifier$
+\end{center}
+
+これらの論理和を扱える．
+
+充足可能な式，充足不可能な式（念のため）
+\renewcommand{\labelitemii}{$\circ$}
+\begin{itemize}
+    \item 充足可能
+    \begin{itemize}
+        \item $x + y = 0$
+        \item $x + y = 0 \wedge 3x + 2y = 1$
+        \item ($x + y = 0 \wedge 3x + 2y = 1) \vee
+                (x + y = 0 \wedge x + y = 1)$
+    \end{itemize}
+    \item 充足不可能
+    \begin{itemize}
+        \item $x + y = 0 \wedge x + y = 1$
+    \end{itemize}
+\end{itemize}
+
+不等式を実装したら，量化子を導入する．
+また，それも終わったら，プリプロセッサを実装する．
+
+\subsection*{ハイパーリンク}
+\begin{itemize}
+    \item ハイパーリンクは，1対多の接続ができるリンク（通常は1対1）．
+    \item わかりにくかったら，同じハイパーリンクを引数に持つアトムは同じ集合に属すると考えてください．
+    \item 例
+    \begin{itemize}
+        \item \texttt{a(!X),b(!X),c(!X).}は，a,b,c が同じハイパーリンクで接続されている（同じ集合に属している）
+        \item \texttt{a(!X,!Y),b(!X,!Z),c(!Y,!Z).}みたいなことも当然できる．
+        \item 要素の追加もできるし削除もできるし併合もできる．（が、線形算術のソルバのほうには併合は今のところ（多分これからも）出てきません）
+    \end{itemize}
+\end{itemize}
 
 
 
-\par
+
 
 

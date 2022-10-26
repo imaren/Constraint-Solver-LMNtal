@@ -157,6 +157,7 @@ Ret = or(C,!X) :- ground(C) | Ret = sat.
 線形算術のシンタックスは以下の通り．ドメインは整数
 \begin{center}
     $formula\: :\: formula\wedge formula \:|\: (formula) \:|\: atom$\\
+    $atom \::\: sum \: op \: sum$\\
     $op \::\: = \:|\: \leq \:|\: <$\\
     $sum \::\: term \:|\: sum+term$\\
     $term \::\: identifier \:|\: constant \:|\: constant \: identifier$
@@ -305,6 +306,4 @@ LMNtal 実装の方針としては，
 4->2->1→3 の順でルールを書く
 →直接戻せなかったので、いいところでトークンを挿入してmul\_n に直す．
 
-
-% 4x + 3y = 10 は充足可能か
 

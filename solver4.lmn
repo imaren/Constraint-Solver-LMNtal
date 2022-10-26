@@ -1,3 +1,12 @@
+%% 入力に対する制約
+%% 入力は DNF (Disjunctive Normal Form) である（論理積の論理和）
+%% 等式番号 !E は制約全体を通して一意のもの(eq アトムにつき１つ)
+%% 節番号は Conjunction ごとに１つ
+%%%（eq(...) and eq(...) and eq(...) or
+%%% (eq(...) and ...)
+%% のようになっていたら最初の節(or の前)が !H1 で２番目の節(or の後)が !H2 になる
+ 
+
 
 % eq(!X1,!X2,!H1), eq(!X2,!X3,!H1), neq(!X1,!X2,!H1).
 % eq(!X1_1,!X1_3,!H2), eq(!X1_2,!X1_4,!H2), neq(!X1_1,!X1_2,!H2).
@@ -11,7 +20,9 @@
 
 eq(add(mul(3,!X1,!E1,!H1),mul(3,!X2,!E1,!H1)),n(9,!E1),!H1).
 eq(add(mul(2,!X1,!E2,!H1),mul(5,!X2,!E2,!H1)),n(10,!E2),!H1).
-ans = or(!H1,unsat).
+ans = or(!H1,!H2).
+eq(add(mul(3,!X1,!E11,!H2),mul(3,!X2,!E11,!H2)),n(9,!E11),!H2).
+eq(add(mul(2,!X1,!E12,!H2),mul(5,!X2,!E12,!H2)),n(12,!E12),!H2).
 
 % eq(add(mul(1,!X1,!E1,!H1),add(mul(2,!X2,!E1,!H1),mul(3,!X3,!E1,!H1))),n(4,!E1),!H1).
 % eq(add(mul(5,!X1,!E2,!H1),add(mul(4,!X2,!E2,!H1),mul(3,!X3,!E2,!H1))),n(8,!E2),!H1).
@@ -34,25 +45,25 @@ add@@ Ret = add(N,M) :- A = N+M | Ret = A.
 %omega test
 
 %%変数が1つの等式があったら決定できる
-decide1@@ eq(mul(N,!X,!E,!H),n(N2,!E),!H) :- N2 mod N =\= 0 | eq(mul_r(N,!X,!E,!H),n(N2,!E),!H), unsat(!H). 
-decide2@@ eq(mul(N,!X,!E,!H),n(N2,!E),!H) :- N2 mod N =:= 0 | eq(mul_r(N,!X,!E,!H),n(N2,!E),!H), sat(!H). 
+decide1@@ eq(mul_n(N,!X,!E,!H),n(N2,!E),!H) :- N2 mod N =\= 0 | eq(mul_r(N,!X,!E,!H),n(N2,!E),!H), unsat(!H). 
+decide2@@ eq(mu_nl(N,!X,!E,!H),n(N2,!E),!H) :- N2 mod N =:= 0 | eq(mul_r(N,!X,!E,!H),n(N2,!E),!H), sat(!H). 
 
-ready_norm@@ ready(!E) \ Ret = mul_p(N,!X,!E,!H) :- Ret = mul(N,!X,!E,!H).
-ready_fin@@ ready(!E) :- .
+ready_norm@@ ready(!E,!H) \ Ret = mul_p(N,!X,!E,!H) :- Ret = mul(N,!X,!E,!H).
+ready_fin@@ ready(!E,!H) :- .
 
 %gcd for normalization
 %% mul(constant, !Identifier, !Hlink)
 %% hlink is unique for each equality
-gcd0@@ Ret = mul(N,!X,!E,!H):- N >= 0| Ret = mul_n(N,!X,!E,!H), gcd(N,!E).
-gcd00@@ Ret = mul(N,!X,!E,!H):- M = -N| Ret = mul_n(N,!X,!E,!H), gcd(M,!E).
-gcd1@@ gcd(0,!H) :- .
-gcd2@@ gcd(N,!H) \ gcd(M,!H) :- N =< M, G = M-N | gcd(G,!H).
-gcd3@@ gcd(1,!H) :- .
+gcd0@@ Ret = mul(N,!X,!E,!H):- N >= 0| Ret = mul_n(N,!X,!E,!H), gcd(N,!E,!H).
+gcd00@@ Ret = mul(N,!X,!E,!H):- M = -N| Ret = mul_n(N,!X,!E,!H), gcd(M,!E,!H).
+gcd1@@ gcd(0,!E,!H) :- .
+gcd2@@ gcd(N,!E,!H) \ gcd(M,!E,!H) :- N =< M, G = M-N | gcd(G,!E,!H).
+gcd3@@ gcd(1,!E,!H) :- .
 %% normalization using gcd of identifiers 
 %% omega test の入力の右辺は整数定数のはずなので，等式，不等式ごとに n(N,!E) が1つ繋がってるはず
-norm_eq_unsat@@ eq(C,n(N,!E),!H), gcd(G,!E) :- ground(C), N mod G =\= 0 | unsat(!H).
-norm1@@ gcd(G,!E) \ Ret = mul_n(N,!X,!E,!H):- A = N / G, uniq(G,!X,!E) | Ret = mul_n(A,!X,!E,!H).
-norm2@@ Ret = n(N,!E), gcd(G,!E) :- A = N / G | Ret = n(A,!E).
+norm_eq_unsat@@ eq(C,n(N,!E),!H), gcd(G,!E,!H) :- ground(C), N mod G =\= 0 | unsat(!H).
+norm1@@ gcd(G,!E,!H) \ Ret = mul_n(N,!X,!E,!H):- A = N / G, uniq(G,!X,!E) | Ret = mul_n(A,!X,!E,!H).
+norm2@@ Ret = n(N,!E), gcd(G,!E,!H) :- A = N / G | Ret = n(A,!E).
 
 %% omega test の最後のステップが終わったら，係数の絶対値が1となるような変数があるかどうかをチェックするために mul_tmp を mul_n に変換する
 loop_omega@@ fin_omega(!H) \ Ret = mul_tmp(N,!R,!E,!H) :- Ret = mul_n(N,!R,!E,!H).
@@ -73,14 +84,14 @@ eliminate3@@ eliminate(S,!X1,!E1,!H), Ret = mul_n(N1,!X1,!E2,!H), eq(C1,n(N2,!E1
     | eq(C2,n(A,!E2),!H).
 %% 変数を削除する
 %% 1回でも正規化に成功していたらトークンを作る．
-eliminate_fin_right@@ eliminate(S,!X1,!E1,!H) \ Ret = add(C,mul_n(N,!X1,!E2,!H)) :- int(N) | Ret = C, token(!E2) .
-eliminate_fin_left@@ eliminate(S,!X1,!E1,!H) \ Ret = add(mul_n(N,!X1,!E2,!H),C) :- int(N) | Ret = C, token(!E2) .
+eliminate_fin_right@@ eliminate(S,!X1,!E1,!H) \ Ret = add(C,mul_n(N,!X1,!E2,!H)) :- int(N) | Ret = C, token(!E2,!H) .
+eliminate_fin_left@@ eliminate(S,!X1,!E1,!H) \ Ret = add(mul_n(N,!X1,!E2,!H),C) :- int(N) | Ret = C, token(!E2,!H) .
 
 %% 同じ変数が2つ出てきたらまとめる
 join@@ Ret = mul_n(N1,!X,!E,!H), Ret2 = add(mul_n(N2,!X,!E,!H),C) :- A = N1 + N2 | Ret = mul_p(A,!X,!E,!H), Ret2 = C.
 %%
-prep_norm@@ token(!E) \ Ret = mul_n(N,!X,!E,!H) :- Ret = mul_p(N,!X,!E,!H).
-prep_fin@@ token(!E) :- ready(!E).
+prep_norm@@ token(!E,!H) \ Ret = mul_n(N,!X,!E,!H) :- Ret = mul_p(N,!X,!E,!H).
+prep_fin@@ token(!E,!H) :- ready(!E,!H).
 
 %%係数 |a_j|=1 を見つける
 %%% 式を消しちゃうバージョン
