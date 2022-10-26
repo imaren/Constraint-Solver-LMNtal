@@ -46,7 +46,7 @@ add@@ Ret = add(N,M) :- A = N+M | Ret = A.
 
 %%変数が1つの等式があったら決定できる
 decide1@@ eq(mul_n(N,!X,!E,!H),n(N2,!E),!H) :- N2 mod N =\= 0 | eq(mul_r(N,!X,!E,!H),n(N2,!E),!H), unsat(!H). 
-decide2@@ eq(mu_nl(N,!X,!E,!H),n(N2,!E),!H) :- N2 mod N =:= 0 | eq(mul_r(N,!X,!E,!H),n(N2,!E),!H), sat(!H). 
+decide2@@ eq(mu_n(N,!X,!E,!H),n(N2,!E),!H) :- N2 mod N =:= 0 | eq(mul_r(N,!X,!E,!H),n(N2,!E),!H), sat(!H). 
 
 ready_norm@@ ready(!E,!H) \ Ret = mul_p(N,!X,!E,!H) :- Ret = mul(N,!X,!E,!H).
 ready_fin@@ ready(!E,!H) :- .
