@@ -1,0 +1,113 @@
+\section{Omega Test の不等式制約の決定手続き}
+
+\subsection*{3つの shadow}
+
+\subsubsection*{real shadow}
+概要：ちょっと大きめに範囲をとって、整数解が見つからなかったら unsatisfiable
+
+$b, c$ を整数定数、$\beta, \gamma$ を残りの制約の論理積としたとき、
+ある変数 $z$ について、下限 $\beta \leq bz$ と上限 $cz \leq \gamma$ が存在するなら
+全ての下限と上限の組に対して、
+制約 $c\beta \leq b\gamma$ を生成する．
+新たに作った制約を新しい制約セットとしてさらに処理する．
+新しい制約セットに含まれる式の数は，元の式よりも1本以上少なく，変数も１つ消去されているはずである．
+
+この時，新たな制約セットが充足不可能であれば，元の制約セットも充足不可能である．
+制約に含まれる変数が１つになっていれば自明に充足可能性が決定でき，変数が２つ以上あればさらに消去を行う．
+ただし、\textcolor{red}{変数が２つ以上あるのに式が１本しかない場合の処理は，まだわからない}
+
+\subsubsection*{dark shadow}
+概要：ちょっと小さめに範囲をとって、整数解が見つかったら satisfiable 
+
+real shadow で変数 $z$ を削除して得た制約 $c\beta /leq b\gamma$ にはそれを満たす解が存在することが分かっている．
+そこで、$c\beta \leq cbz \leq b\gamma$ を満たすような整数解があるかどうかを決定することをdark shadow の目的とする．
+（つまり入力は、変数 z を削除する前の制約セット？）
+
+証明は省略して・・・
+
+$b\gamma - c\beta \geq (c-1)(b-1)$ が成立するならば，整数解が存在する．
+
+\subsubsection*{after real \& dark shadow}
+ここで、$c-1$ もしくは $b-1$ の場合は，dark shadow は real shadow と同じことを言っているので、real shadow を確認すれば解があるかどうかがわかる．
+（なるべく係数が 1 であるような正確な射影が結果として得られるような変数を削除したい）
+
+\subsubsection*{gray shadow}
+real shadow より，\\
+$c\beta \leq cbz \leq b\gamma$ は，どのような解でも必ず充足する\\
+また，dark shadow には整数が含まれない（含まれていたらその時点で充足可能が返っている）ため，\\
+$c\beta \leq cbz\leq b\gamma \wedge b\gamma -c\beta \leq cb-c-b$ を満たす解が存在すれば元の問題も解を持つ．
+
+変形すると，
+$\beta \leq bz \leq \beta + (cb-c-b/c)$
+
+これを満たす整数を $bz$ に１つずつ代入していって、解が存在すれば satisfiable.
+つまり，$bz=\beta + i$ で，上限を超えるまで $i$ をインクリメントしていく．
+$z$ の任意の上限における $z$ の最大の係数を $c$ とすれば部分問題を減らせる
+
+
+ここまで読んでもやっぱり変数が３個あった場合はどうなるのかだとかはよくわからないので具体例を考えてみて実際に手で解いてみよう．
+
+
+\subsection*{example1: 2 variables, conjunction of 3 leq}
+Input example:
+\begin{center}
+    $C :=$\\
+    $-x + 2y \leq 0 \wedge$\\
+    $x -8y \leq -2 \wedge$\\
+    $x + 2y \leq 3 $
+\end{center}
+
+これは、教科書の式．
+
+Omega Test(C) を呼ぶと、
+\begin{enumerate}
+    \item 変数が1つじゃない
+    \item $v := x$
+    \item $C_{R1} :- Real-Shadow(C,v)$
+    \item *$C_{R1} = 1/3 \leq y \wedge y \leq 3/4$
+    \item $Omegatest(C_{R1})$ = "Unsatisfiable" ? Return "Unsatisfiable"
+    \begin{enumerate}
+        \item 変数が1つなので決定
+        \item Return "Unsatisfiable"
+    \end{enumerate}
+    \item Return "Unsatisfiable"
+\end{enumerate}
+
+
+\begin{center}
+    $C :=$\\
+    (1)$-x + 2y \leq 0 \wedge$\\ 
+    (2)$x -8y \leq -2 \wedge$\\
+    (3)$x + 2y \leq 3 $\\
+    $v = x$\\
+    $Real-Shadow(C,v) :=$\\
+    (1), (2) より \\
+    $2y \leq x \wedge x \leq 8y -2$\\
+    だから，\\
+    $2y \leq 8y -2$\\
+    $1/3 \leq y$\\
+    (1), (3) より \\
+    $2y \leq x \wedge x \leq -2y +3$\\
+    だから, \\
+    $2y \leq -2y + 3$\\
+    $y \leq 3/4$
+\end{center}
+
+Omega Test(C) を呼ぶもう1つのパターン
+\begin{enumerate}
+    \item 変数が1つじゃない
+    \item $v := y$
+    \item $C_{R2} :- Real-Shadow(C,v)$\\
+            *$C_{R2} = 2/3 \leq x \wedge x \leq 2$
+    \item $Omegatest(C_{R2})$ = "Unsatisfiable" ? Return "Unsatisfiable"
+    \begin{enumerate}
+        \item 変数が1つなので決定
+        \item Return "Satisfiable"
+    \end{enumerate}
+    \item $C_{D2} := Dark-Shadow(C,v)$\\
+            *$C_{D2} = $
+    \item $Omegatest(C_{D2})$ = "Satisfiable" ? Return "Satisfiable"
+    \begin{enumerate}
+        \item s
+    \end{enumerate}
+\end{enumerate}
