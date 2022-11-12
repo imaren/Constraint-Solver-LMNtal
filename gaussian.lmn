@@ -1,0 +1,38 @@
+
+
+eq(3*!X, 9).
+
+eqz([[Var, Coeff]], Abs) :- is(Var,-1*(Abs/Coeff)).
+//member ってなに（第1引数が第2引数のリストのメンバーであればtrue）
+eqz(Vars, Abs), member([V, C], Vars):-  int(V), int(C),ground(Vars) | stringify(Vars, Abs, R), eq(R, 0).
+eqz([], C) :- C =\= 0 | false.
+
+eqz([[Var, Coeff]|Rest], Abs1), member([Var2, Coeff2], Vars2)\ eqz(Vars2, Abs2) 
+    :- ground(Abs1), ground(Rest), ground(Coeff),ground(Coeff2),Var2 == Var 
+    | stringify(Vars2, Abs2, S2), stringify([[Var, Coeff]|Rest], Abs1, S1), is(C,Coeff2/Coeff), normalize(S2-C*S1, R), eq(R, 0).
+
+
+eq(X,0) :- normalize(X, VarsT, !Abs), simplify(VarsT, !Vars), eqz(!Vars, !Abs).
+eq(X, A) :- int(A) | XA = X-A, eq(XA, 0).
+eq(!X, !Y) :- normalize(sub(!X,!Y), !XY), eq(!XY, 0).
+
+normalize(X, R) :- normalize(X, Vars, Abs), simplify(Vars, Vars2), build(Vars2, Rv), merge_var_abs(Rv, Abs, R).
+
+normalize(-A, Vars, Abs) :- normalize((-1)*A, Vars, Abs).
+normalize(A-C, Vars, Abs) :- normalize(A+(-1)*C, Vars, Abs).
+
+normalize(A+C, Vars, !Abs) :- int(C) | normalize(A, Vars, !Abs2), is(!Abs,!Abs2+C).
+normalize(C+A, Vars, !Abs) :- int(C) | normalize(A, Vars, !Abs2), is(!Abs,!Abs2+C).
+normalize(C1*C2, Vars, !Abs) :- int(C1), int(C2) | Vars = [], is(!Abs,C1*C2).
+normalize((C1/C2)*A, Vars, Abs) :- int(C1), int(C2) | is(C,C1/C2), normalize(C*A, Vars, Abs).
+
+normalize(A+B, Vars, !Abs) :- normalize(A, Vars1, !Abs1), normalize(B, Vars2, !Abs2), merge(Vars1, Vars2, Vars), is(!Abs,!Abs1+!Abs2).
+
+normalize(A/C, Vars, Abs) :- int(C) | is(Cn,1/C), normalize(Cn*A, Vars, Abs).
+normalize(C*(A+B), Vars, Abs) :- ground(C) | normalize(C*A+C*B, Vars, Abs).
+normalize((A+B)*C, Vars, Abs) :- ground(C) | normalize(C*A+C*B, Vars, Abs).
+normalize(C*A, Vars, !Abs) :- int(C) | normalize(A, Vars2, !Abs2), mult_vars(Vars2, C, Vars), is(!Abs,C*!Abs2).
+normalize(A*C, Vars, !Abs) :- int(C) | normalize(A, Vars2, !Abs2), mult_vars(Vars2, C, Vars), is(!Abs,C*!Abs2).
+
+normalize(X, Vars, !Abs) :- int(X) | is(!Abs,X), Vars = [].
+normalize(X, Vars, Abs) :- int(X) | Vars = [[X, 1]], Abs = 0.

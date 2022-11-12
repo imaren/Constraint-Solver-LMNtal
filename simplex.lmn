@@ -1,0 +1,17 @@
+% input(ge,1*!X+1*!Y+-2*!Z,2).
+% input(le,1*!X+1*!Y+-2*!Z,2).
+input(eq,1*!X+1*!Y+-2*!Z,2).
+
+//移項未実装
+
+% transpos1@@ input(Op, C, add(mul(I,!X),B)) :-    
+
+prepare1@@ R = I*!X :- int(I) | R = mul(I,!X).
+prepare2@@ R = A+B :- R = add(A,B).
+
+// eqz(Problem Vars, additional Var)
+// coefficient of additional variable is minus.
+// e.g. eqz(PVs, !S) then the formula is PVs - !S.
+ge_generalize@@ input(ge,C,N) :- int(N) | eqz(C,!New), geq(!New, N). 
+le_generalize@@ input(le,C,N) :- int(N) | eqz(C,!New), leq(!New, N). 
+eq_generalize@@ input(eq,C,N) :- int(N) | eqz(C,!New), leq(!New, N), geq(!New, N). 
