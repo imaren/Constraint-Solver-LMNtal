@@ -1,17 +1,35 @@
-% input(ge,1*!X+1*!Y+-2*!Z,2).
+input(ge,1*!X+1*!Y+-2*!Z,2).
 % input(le,1*!X+1*!Y+-2*!Z,2).
-input(eq,1*!X+1*!Y+-2*!Z,2).
+% input(eq,1*!X+1*!Y+-2*!Z,2).
 
 //移項未実装
-
 % transpos1@@ input(Op, C, add(mul(I,!X),B)) :-    
 
 prepare1@@ R = I*!X :- int(I) | R = mul(I,!X).
 prepare2@@ R = A+B :- R = add(A,B).
 
+//combine two mul atoms, if they have same variable(hyperlink)
+% combine1@@ R = mul(N,!X), R2 = add(C,mul(M,!X)) :- A = N+M| R = mul(A,!X), R2 = C.
+
+
 // eqz(Problem Vars, additional Var)
 // coefficient of additional variable is minus.
 // e.g. eqz(PVs, !S) then the formula is PVs - !S.
-ge_generalize@@ input(ge,C,N) :- int(N) | eqz(C,!New), geq(!New, N). 
-le_generalize@@ input(le,C,N) :- int(N) | eqz(C,!New), leq(!New, N). 
-eq_generalize@@ input(eq,C,N) :- int(N) | eqz(C,!New), leq(!New, N), geq(!New, N). 
+ge_generalize@@ input(ge,C,N) :- int(N) | eqz(C,!S), geq(!S, N), additional(!S). 
+le_generalize@@ input(le,C,N) :- int(N) | eqz(C,!S), leq(!S, N), additional(!S). 
+eq_generalize@@ input(eq,C,N) :- int(N) | eqz(C,!S), leq(!S, N), geq(!S, N), additional(!S). 
+
+// problem variables
+problem_var@@ R = mul(N,!X) \:- uniq(!X) | problem(!X).
+
+// init assignment a(x_i) = 0 
+assignment_init1@@ problem(!X) \:- uniq(!X) | a(!X,0).
+assignment_init2@@ additional(!X) \:- uniq(!X) | a(!X,0).
+
+// build tableau
+tableau_init@@ problem(!X), additional(!Y) \:- uniq(!X,!Y) | tableau(!X,!Y,0).
+tableau_copy_eqz@@ eqz(C,S) \:- uniq(C,S) | make_tab(C,S).
+tableau_build1@@ make_tab(add(C,mul(N,!X)),!Y), tableau(!X,!Y,M) 
+                    :- A = N+M | make_tab(C,!Y), tableau(!X,!Y,A). 
+tableau_build2@@ make_tab(mul(N,!X),!Y), tableau(!X,!Y,M) 
+                    :- A = N+M | tableau(!X,!Y,A). 
