@@ -1,0 +1,78 @@
+// if-else というべきか or というべきか case というべきか
+// と、for all atoms ルール
+// マッチングの効率が良くなるパターンがある（gcd とかが典型）
+// uniq の history table を共有できる
+// 逐次実行がとても表現しやすい（not を使えば全部解決説もある）
+    //でも、たぶん not を連発するよりも効率はいいのではないかと思っているが、
+    //プログラムの書き方とかで結構変わる可能性もあってよくわからない
+
+//case1 gcd 引数 0 が出現する時は生成段階で消せる
+// 絶対マッチング成功
+gcd(0) :- .// 一回失敗したらやらないみたいなのがあると、それを適用したくなる
+gcd(A), gcd(B) :- B > A, N = B-A | gcd(A), gcd(N);
+               :- B < A, N = A-B | gcd(B), gcd(N);
+               :- A =:= B |.
+
+//case1-2
+gcd(A), gcd(B) :- A =:= 0 | gcd(B)
+               :- B =:= 0 | gcd(A)
+               :- B > A, N = B-A | gcd(A), gcd(N)
+               :- B < A, N = A-B | gcd(B), gcd(N)
+               :- A =:= B |.
+
+//case2-1 for all と or があると、超簡単に逐次性を表現可能
+//rule1 の実行がすべて終わってからルール２を実行
+rule1@@ _forAll token(!E,!H) \ Ret = mul_leq_n(N,!X,!E,!H) 
+                    :- uniq | Ret = mul_leq_p(N,!X,!E,!H), token2(!E,!X)
+                    :-      | Ret = mul_leq_p(N,!X,!E,!H).
+rule2@@         token2(!E,!H) :- ready(!E,!H).
+
+//case2-2
+// uniq reset
+// ready アトムを使って何かマッチングが成功。そのあと、またまた token が生成された。
+%% もともとは、1回でも正規化に成功していたらトークンを作る．
+// だから、さっきの uniq もリセットしたい
+rule1@@ _forAll token(!E,!H) \ Ret = mul_leq_n(N,!X,!E,!H) 
+                    :- uniq_<id> | Ret = mul_leq_p(N,!X,!E,!H), token2(!E,!X)
+                    :-      | Ret = mul_leq_p(N,!X,!E,!H).
+rule2@@         token2(!E,!H) :- ready(!E,!H).
+
+eliminate_fin_right@@ eliminate(S,!X1,!E1,!H) \ Ret = add(C,mul_n(N,!X1,!E2,!H)) 
+    :- int(N) | Ret = C, token(!E2,!H), \Reset(uniq_<id>).
+eliminate_fin_left@@ eliminate(S,!X1,!E1,!H) \ Ret = add(mul_n(N,!X1,!E2,!H),C) 
+    :- int(N) | Ret = C, token(!E2,!H), \Reset(uniq_<id>).
+
+//case2-3 head すら一致してなくていいバージョンの or
+// 逐次的な処理は超やりやすい
+// 1個目のマッチングが失敗したら２個目のマッチングを試す
+rule1@@ token(!E,!H) \ Ret = mul_leq_n(N,!X,!E,!H) 
+                                    :- Ret = mul_leq_p(N,!X,!E,!H);
+        token(!E,!H)                :- ready(!E,!H).
+
+
+//case3 絶対値の min
+// マッチングの回数　大雑把に最高で 1/4　？
+// 頑張って演算してルール2本に減らしました。とかやらなくていい
+min(N,!X,!E,!H) \ min(M,!X2,!E2,!H) 
+    :-N>=0, M>=0, N =< M |
+    :-N<0, M<0, N >= M |
+    :-N>=0, M<0, N + M < 0 |
+    :-N>=0, M<0, N + M > 0 |.
+
+
+//case4 uniq table の共有
+
+
+
+//番外編 1 指定したリンクの先のどこかに指定したアトムがつながっている
+//       2 特定のアトム以下につながったすべてのアトムにマッチする
+// 数式の直感的な処理：移項
+eq(add(mul(1,!X),add(mul(2,!Y), mul(3,!Z))),n(4)).
+select(!X).
+
+
+
+
+
+
+

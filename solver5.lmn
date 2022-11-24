@@ -144,11 +144,19 @@ elim_zero1@@ Ret = add(C,mul_tmp(N,!X1,!E2,!H)) :- N =:= 0 | Ret = C.
 elim_zero2@@ Ret = add(mul_tmp(N,!X1,!E2,!H),C) :- N =:= 0 | Ret = C.
 
 %% 左辺 x_n 以外 等式内に該当する変数が無いと代入できないことに注意
-omega4@@ m(M,!X,!R,!E,!H), Ret2 = mul_o(T,!X,!E2,!H) \ Ret = mul_o(N,!X2,!E2,!H) :- int(T),!X \= !X2, A = (2*N+M)/(2*M), M*N >= 0 | Ret = mul_tmp(add(A,symod(N,M)),!X2,!E2,!H).
-omega4_1@@ m(M,!X,!R,!E,!H), Ret2 = mul_o(T,!X,!E2,!H) \ Ret = mul_o(N,!X2,!E2,!H) :- int(T), !X \= !X2, A = (2*N+M)/(2*M)-1, M*N < 0 | Ret = mul_tmp(add(A,symod(N,M)),!X2,!E2,!H).
+omega4@@ m(M,!X,!R,!E,!H), Ret2 = mul_o(T,!X,!E2,!H) \ Ret = mul_o(N,!X2,!E2,!H) 
+    :- int(T),!X \= !X2, A = (2*N+M)/(2*M), M*N >= 0 
+    | Ret = mul_tmp(add(A,symod(N,M)),!X2,!E2,!H).
+omega4_1@@ m(M,!X,!R,!E,!H), Ret2 = mul_o(T,!X,!E2,!H) \ Ret = mul_o(N,!X2,!E2,!H) 
+    :- int(T), !X \= !X2, A = (2*N+M)/(2*M)-1, M*N < 0 
+    | Ret = mul_tmp(add(A,symod(N,M)),!X2,!E2,!H).
 %% 右辺 
-omega4_2@@  m(M,!X,!R,!E,!H), Ret = mul_o(T,!X,!E2,!H) \ eq(C,n(N,!E2),!H) :-  A = (2*N+M)/(2*M), M*N >= 0, uniq(!R,!E2) | eq(C,n(add(A,symod(N,M)),!E2),!H).
-omega4_3@@  m(M,!X,!R,!E,!H), Ret = mul_o(T,!X,!E2,!H) \ eq(C,n(N,!E2),!H) :-  A = (2*N+M)/(2*M)-1, M*N < 0, uniq(!R,!E2) | eq(C,n(add(A,symod(N,M)),!E2),!H).
+omega4_2@@  m(M,!X,!R,!E,!H), Ret = mul_o(T,!X,!E2,!H) \ eq(C,n(N,!E2),!H) 
+    :-  A = (2*N+M)/(2*M), M*N >= 0, uniq(!R,!E2) 
+    | eq(C,n(add(A,symod(N,M)),!E2),!H).
+omega4_3@@  m(M,!X,!R,!E,!H), Ret = mul_o(T,!X,!E2,!H) \ eq(C,n(N,!E2),!H) 
+    :-  A = (2*N+M)/(2*M)-1, M*N < 0, uniq(!R,!E2) 
+    | eq(C,n(add(A,symod(N,M)),!E2),!H).
 %% 左辺 x_n 左辺の x_n は最後
 omega4_4@@ m(M,!X,!R,!E,!H) \ Ret = mul_o(N,!X,!E2,!H) :- int(M), A = -N | Ret = mul_tmp(A,!R,!E2,!H).
 omega2@@ min(N,!X,!E,!H) \ min(M,!X2,!E2,!H) :-N>=0, M>=0, N =< M |.

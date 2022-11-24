@@ -1,0 +1,11 @@
+{loop(1001).
+count(1).
+}.
+
+//初期状態の生成だけ比較しない（生成だけは上から実行に頼る）
+ruleA@@{count(N), loop(M), $p} :- N < M, A = N+1, G = N*3 | {count(A), loop(M), gcd(G),mul(G),$p}.
+ruleB@@{gcd(0), $p} :- {$p}.
+ruleC@@{gcd(A), gcd(B),$p} :- B >= A, N = B-A | {gcd(A), gcd(N),$p}.
+
+ruleD@@{gcd(A), mul(B), $p} :- C = B / A, \+($p=(gcd(D),$pp)) | {gcd(A), mul_normal(C), $p}.
+ruleE@@{gcd(A),$p} :-int(A), \+($p=(mul(B),$pp)) | {$p}.

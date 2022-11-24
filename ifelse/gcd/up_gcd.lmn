@@ -1,0 +1,13 @@
+% gcd(0) :- .// 一回失敗したらやらないみたいなのがあると、それを適用したくなる
+% gcd(A), gcd(B) :- B > A, N = B-A | gcd(A), gcd(N)
+%                :- B < A, N = A-B | gcd(B), gcd(N)
+%                :- A =:= B |.
+
+loop(10001).
+count(1).
+
+count(N), loop(M) :- N < M, A = N+1, G = N*3 | count(A), loop(M), gcd(G).
+
+gcd(A), gcd(B) :- B > A, N = B-A | gcd(A), gcd(N).
+gcd(A), gcd(B) :- B < A, N = A-B | gcd(B), gcd(N).
+gcd(A), gcd(B) :- A =:= B |gcd(A).

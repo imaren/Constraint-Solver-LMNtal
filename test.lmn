@@ -1,9 +1,9 @@
 % a(N) :- \+(N>0) | b(N).
-% {a},{b}.
-%  {$p} :- \+($p=(a,$pp)) | $p,test.
+{a, {a(1,2)}},{b, {b}}.
+{$p[]} :- \+($p=({a(A,B),$pp},$ppp)) | test.
 
-a(5).
+% a(5).
 
-a(N) :- A = float(N) /. 1.3,  B = int(A)| b(B).
+% a(N) :- A = float(N) /. 1.3,  B = int(A)| b(B).
 
 % b(N) :- A = int(N) | c(A).

@@ -16,7 +16,7 @@ add@@ Ret = add(N,M) :- A = N+M | Ret = A.
 
 %omega test
 
-%%変数が1つの等式があったら決定できる(いらない説がある)
+%%変数が1つの等式があったら決定できる(いらないかもしれない)
 decide1@@ eq(mul_n(N,!X,!E,!H),n(N2,!E),!H) :- N2 mod N =\= 0 | eq_r(mul_r(N,!X,!E,!H),n(N2,!E),!H), unsat(!H). 
 decide2@@ eq(mul_n(N,!X,!E,!H),n(N2,!E),!H) :- N2 mod N =:= 0 | eq_r(mul_r(N,!X,!E,!H),n(N2,!E),!H), sat(!H). 
 
@@ -25,8 +25,6 @@ lready_norm@@ ready(!E,!H) \ Ret = mul_leq_p(N,!X,!E,!H) :- Ret = mul_leq(N,!X,!
 ready_fin@@ ready(!E,!H) :- .
 
 %gcd for normalization
-%% mul(constant, !Identifier, !Hlink)
-%% hlink is unique for each equality
 gcd0@@ Ret = mul(N,!X,!E,!H):- N >= 0| Ret = mul_n(N,!X,!E,!H), gcd(N,!E,!H).
 gcd00@@ Ret = mul(N,!X,!E,!H):- N < 0, M = -N| Ret = mul_n(N,!X,!E,!H), gcd(M,!E,!H).
 lgcd0@@ Ret = mul_leq(N,!X,!E,!H):- N >= 0| Ret = mul_leq_n(N,!X,!E,!H), gcd(N,!E,!H).

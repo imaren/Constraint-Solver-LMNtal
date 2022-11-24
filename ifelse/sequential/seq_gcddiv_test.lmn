@@ -1,0 +1,11 @@
+loop(10001).
+count(1).
+
+//slim の上から実行に頼ったコード
+ruleA@@count(N), loop(M) :- N < M, A = N+1, G = N*3 | count(A), loop(M), gcd(G), mul(G).
+
+ruleB@@gcd(0) :-.
+ruleC@@gcd(A), gcd(B) :- B >= A, N = B-A | gcd(A), gcd(N).
+
+ruleD@@gcd(A) \ mul(B) :- C = B/A | mul_normal(C).
+ruleE@@gcd(A) :- int(A) | .

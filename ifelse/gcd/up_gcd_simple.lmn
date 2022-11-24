@@ -1,0 +1,7 @@
+loop(10001).
+count(1).
+
+count(N), loop(M) :- N < M, A = N+1, G = N*3 | count(A), loop(M), gcd(G).
+
+gcd(0) :-.
+gcd(A) \ gcd(B) :- B >= A, N = B-A | gcd(N).

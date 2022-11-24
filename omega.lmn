@@ -1,0 +1,255 @@
+/*
+    式の形， eqn(変数を含む式, 定数) の形（右辺や左辺を判断できないから，変数は左辺にあるものとするべき）
+
+*/
+{
+    % {eq,eq(-3*!X+2*!Y,0)}.
+    % {eq,eq(3*!X+4*!Y,3)}.
+    % {leq,leq(1*!X+2*!Y,4)}.
+    // TODO
+    // 入力形式を、eq(...), leq(...) に分けるのではなくて、
+    // expr(...) にして、膜の中に別に0引数の eq, leq アトムを持っておけばルール数減らせるかも
+    % {leq, leq(-1*!X+2*!Y,0)}.
+    % {leq, leq(1*!X+-8*!Y,-2)}.
+    % {leq, leq(1*!X+2*!Y,3)}.
+
+    {leq, leq(-6*!Y,-2)}.
+    {leq, leq(4*!Y, 3)}.
+}.
+
+% :- uniq | memid(0).
+% mem_id@@ memid(N), {$p[]} :- NN=N+1, \+($p=(id_m(A),$pp)) | memid(NN), {id_m(N),$p[]}.
+
+mem_hlink_id@@ {$p[]} 
+    :- \+($p=(id_m(A),$pp)) 
+    | {id_m(!N),$p[]}.
+
+prepare1@@ {{R = I*!X, $p[R]},$p2[]}:- int(I) | {{R = mul(I,!X), $p[R]},$p2[]}.
+prepare2@@ {{R = A+B, $p[R,A,B]},$p2[]}:- {{R = add(A,B), $p[R,A,B]},$p2[]}.
+
+symmetric_mod1@@ {{R=symod(N,M),$p[R]},$p2[]} 
+    :- A = N mod M, 2*A < M | {{R=A,$p[R]},$p2[]}. 
+symmetric_mod2@@ {{R=symod(N,M),$p[R]},$p2[]} 
+    :- A = (N mod M)-M, 2*A >= M | {{R=A,$p[R]},$p2[]}. 
+add_i@@ {{R=add(N,M),$p[R]},$p2[]} :- A=N+M | {{R=A,$p[R]},$p2[]}.
+
+// 変数が1つなら決定する
+decide_eq1@@ {{eq(mul_normal(N,!X),M),$p[]},$p2[]}
+    :- M mod N =:= 0, A = M/N | {{eq_removed(mul_removed(1,!X),A),sat,$p[]},$p2[]}.
+decide_eq2@@ {{eq(mul_normal(N,!X),M),$p[]},$p2[]}
+    :- M mod N =\= 0 | {{eq_removed(mul_removed(N,!X),M),unsat,$p[]},$p2[]}. 
+
+// normalization
+// gcd 
+gcd_prep1@@ {{R = mul(N,!X),$p[R]},$p2[]}
+    :- N >= 0, \+($p=(normed,$pp))
+    | {{R = mul_WaitDivGcd(N,!X), gcd(N),$p[R]},$p2[]}.
+gcd_prep2@@ {{R = mul(N,!X),$p[R]},$p2[]}
+    :- M = -N, \+($p=(normed,$pp))
+    | {{R = mul_WaitDivGcd(N,!X), gcd(M),$p[R]},$p2[]}.
+gcd1@@ {{gcd(0),$p[]},$p2[]} :-{{$p[]},$p2[]}.
+gcd2@@ {{gcd(N), gcd(M),$p[]},$p2[]} :- N =< M, G = M-N,\+($p=(R=mul(A,B),$pp)) | {{gcd(N), gcd(G),$p[]},$p2[]}.
+
+// devide by gcd
+n_unsat@@ {{eq(C,N),gcd(G), $p[C]},$p2[]} 
+    :- N mod G =\= 0, \+($p=(gcd(X),$pp)), \+($p=(fin_norm_const,$pp))
+    | {{unsat},$p2[]}.
+norm1@@ {{gcd(G), R = mul_WaitDivGcd(N,!X),$p[R]},$p2[]}
+    :- A = N / G,  \+($p=(gcd(B),$pp))
+    | {{gcd(G),R = mul_normal(A,!X),$p[R]},$p2[]}.
+norm2_eq@@ {{eq(C,N), gcd(G),$p[C]},$p2[]} 
+    :- A = N / G , \+($p=(fin_norm_const,$pp)), \+($p=(gcd(B),$pp))
+    | {{eq(C,A), gcd(G),fin_norm_const, $p[C]},$p2[]}.
+norm2_leq_plus@@ {{leq(C,N), gcd(G),$p[C]},$p2[]} 
+    :- N >= 0, A = N / G , \+($p=(fin_norm_const,$pp)), \+($p=(gcd(B),$pp))
+    | {{leq(C,A), gcd(G),fin_norm_const, $p[C]},$p2[]}.
+norm2_leq_minus@@ {{leq(C,N), gcd(G),$p[C]},$p2[]} 
+    :- N < 0, A = N/G -1 , \+($p=(fin_norm_const,$pp)), \+($p=(gcd(B),$pp))
+    | {{leq(C,A), gcd(G),fin_norm_const, $p[C]},$p2[]}.
+norm_fin@@ {{gcd(G),fin_norm_const, $p[]},$p2[]} :-int(G) | {{$p[]},$p2[]}. 
+
+// 係数が 1 の 変数を探す
+find_coef_1@@ {{R = mul_normal(N,!X), eq(E,M), $p[R,E]},$p2[]} 
+    :- N*N =:= 1, int(M), \+($p=(replace(A,B,C,D),$pp)), \+($p2=(coef1_found,$pp2)),\+($p2=(fin_omega,$pp2))
+    | {{R = mul_removed(N,!X), eq_removed(E,M), replace(N,!X,tmp,M),$p[R,E]},coef1_found,$p2[]}.
+
+// 式の削除（係数が 1 の変数 = その他 の式を表す表現を作る）
+elim1@@  {{replace(S,!X1,C,D), R= mul_normal(N,!X2),$p[R,C]},$p2[]} 
+    :- A = -N * S, int(D) 
+    | {{R = mul_removed(N,!X2), replace(S,!X1,add(C,emul(A,!X2)),D),$p[R,C]},$p2[]}.
+elim2@@ {{R= add(tmp,C),$p[R,C]},$p2[]}
+    :- \+($p=(mul_normal(Z,ZZ,ZZZ),$pp))
+    | {{R=C,$p[R,C],fin_elim},$p2[]}.
+elim3@@ {{replace(S,!X,C,D),fin_elim,$p[]},$p2[]}
+    :- ground(C), int(D),int(S)
+    | {{$p[]},replace(S,!X,C,D),$p2[]}.
+% elim4@@ {R=emul(N,!X),$p[R]} :- int(N) | {R=mul_normal(N,!X),$p[R]}.
+
+// 削除したい変数の式を他の式に代入
+assign1@@ {replace(S,!X,add(C,C1),D), {R=mul_normal(N,!X), $p[R]},$p2[]}
+    :- ground(C),ground(C1), int(N),int(S),int(D)
+    | {replace(S,!X,add(C,C1),D), {R=add(C,C1),mult(N), $p[R]},$p2[]}.
+assign1_2@@ {replace(S,!X,emul(C,!H),D), {R=mul_normal(N,!X), $p[R]},$p2[]}
+    :- int(C), int(N),int(S),int(D)
+    | {replace(S,!X,emul(C,!H),D), {R=emul(C,!H),mult(N), $p[R]},$p2[]}.
+assign2@@ {{mult(N), R=emul(M,!X), $p[R]}, $p2[]} 
+    :- A = N*M 
+    | {{mult(N), R=mul_normal(A,!X), $p[R]},$p2[]}.
+assign3@@ {{mult(N),$p[]},$p2[]}
+    :- int(N), \+($p=(emul(A,B,C),$pp))
+    | {{right(N), $p[]},$p2[]}.
+assign4_eq@@ {replace(S,!X,C,D), {right(N), eq(C1,M), $p[]},$p2[]}
+    :- ground(C), ground(C1), A=M-N*S*D
+    | {replace(S,!X,C,D),{normed, eq(C1,A), $p[]},$p2[]}.
+assign4_leq@@ {replace(S,!X,C,D), {right(N), leq(C1,M), $p[]},$p2[]}
+    :- ground(C), ground(C1), A=M-N*S*D
+    | {replace(S,!X,C,D),{normed, leq(C1,A), $p[]},$p2[]}.
+
+// 同じ変数の係数を足して、係数0になった項は消す
+join_mul1@@ {{R=mul_normal(N,!X), RR=add(C,mul_normal(M,!X)), $p[R,RR]},$p2[]}
+    :- A=N+M, ground(C)
+    | {{R=mul_normal(A,!X), RR=C, $p[R,RR]},$p2[]}.
+join_mul2@@ {{R=add(mul_normal(N,!X),mul_normal(M,!X)), $p[R]},$p2[]}
+    :- A=N+M
+    | {{R=mul_normal(A,!X), $p[R]},$p2[]}.
+elim_zero1@@ {{R=add(mul_normal(N,!X),C), $p[R]},$p2[]}
+    :- N=:=0, ground(C)
+    | {{R=C, $p[R]},$p2[]}.
+elim_zero2@@ {{R=add(C,mul_normal(N,!X)), $p[R]},$p2[]}
+    :- N=:=0, ground(C)
+    | {{R=C, $p[R]},$p2[]}.
+
+// gcd に移る（現在は上から実行に頼るしか思いついていない）
+goto_gcd1@@ {{normed, R=mul_normal(N,!X), $p[R]},$p2[]} 
+    :- int(N)
+    | {{normed, R=mul(N,!X), $p[R]},$p2[]}. 
+goto_gcd2@@ {coef1_found,{normed, $p[]},$p2[]} 
+    :- \+($p=(mul_normal(A,B,C),$pp))
+    | {{$p[]},$p2[]}. 
+
+// 係数 1 が無かったら（上から実行しか思いついてない）
+// omega の等式除去
+no_coef1@@ {{R=mul_normal(N,!X), eq, $p[R]},$p2[]}
+    :- int(N), \+($p2=(coef1_found,$pp2)), \+($p2=(fin_omega,$pp2))
+    | {{R=mul_omega_prep(N,!X), eq, $p[R]},$p2[]}.
+
+omega1@@ {{R=mul_omega_prep(N,!X), $p[R]},$p2[]}
+    :- int(N), \+($p=(mul_normal(A,B,C),$pp))
+    | {abs_min(N,!X),{R=mul_omega(N,!X),$p[R]},$p2[]}.
+
+abs_min1@@ {abs_min(N,!X), abs_min(M,!Y),{$p[]},$p2[]}
+    :- N>=0, M>=0, N =< M 
+    |{abs_min(N,!X),{$p[]},$p2[]}.
+abs_min2@@ {abs_min(N,!X), abs_min(M,!Y),{$p[]},$p2[]}
+    :- N>=0, M<0, N + M < 0 
+    |{abs_min(N,!X),{$p[]},$p2[]}.
+abs_min3@@ {abs_min(N,!X), abs_min(M,!Y),{$p[]},$p2[]}
+    :- N<0, M<0, N >= M 
+    |{abs_min(N,!X),{$p[]},$p2[]}.
+abs_min4@@ {abs_min(N,!X), abs_min(M,!Y),{$p[]},$p2[]}
+    :- N<0, M>=0, N + M > 0 
+    |{abs_min(N,!X),{$p[]},$p2[]}.
+
+new_var@@ {abs_min(N,!X),$p[]}
+    :- \+($p=(abs_min(B,C),$pp)), A = N+1
+    | {new_var(A,!X,!Sigma),$p[]}.
+
+// 新しい変数の代入
+id@@ :- uniq | id(0).
+omega_right@@ id(I),{new_var(A,!X,!S),{R=mul_omega(N,!X),$p[R]},$p2[]}
+    :- M = -N, int(A), II = I+1
+    | id(II),{new_var(A,!X,!S),{newassign(I),R=mul_omega_fin(M,!S),$p[R]},$p2[]}.
+omega_left1@@  {new_var(M,!X,!S),{newassign(I),R=mul_omega(N,!Y),$p[R]},$p2[]}
+    :- !X \= !Y, A = (2*N+M)/(2*M), M*N >= 0, int(I)
+    | {new_var(M,!X,!S),{newassign(I),R=mul_omega_fin(add(A,symod(N,M)),!Y),$p[R]},$p2[]}.
+omega_left2@@  {new_var(M,!X,!S),{newassign(I),R=mul_omega(N,!Y),$p[R]},$p2[]}
+    :- !X \= !Y, A = (2*N+M)/(2*M)-1, M*N < 0, int(I)
+    | {new_var(M,!X,!S),{newassign(I),R=mul_omega_fin(add(A,symod(N,M)),!Y),$p[R]},$p2[]}.
+omega_const1@@ {new_var(M,!X,!S),{newassign(I),eq(C,N),$p[C]},$p2[]}
+    :- A = (2*N+M)/(2*M), M*N >= 0, uniq(!S,I), int(I)
+    | {new_var(M,!X,!S),{newassign(I),eq(C,add(A,symod(N,M))),$p[C]},$p2[]}.
+omega_const2@@ {new_var(M,!X,!S),{newassign(I),eq(C,N),$p[C]},$p2[]}
+    :- A = (2*N+M)/(2*M)-1, M*N < 0, uniq(!S,I), int(I)
+    | {new_var(M,!X,!S),{newassign(I),eq(C,add(A,symod(N,M))),$p[C]},$p2[]}.
+
+fin_omega1@@ {new_var(M,!X,!S),$p[]}
+    :- int(M), \+($p=({mul_omega(A,B,R),$pp},$ppp)), uniq(!X)
+    | {fin_omega,$p[]}.
+fin_omega2@@ {fin_omega, {R=mul_omega_fin(N,!X),$p[R]},$p2[]}
+    :- int(N)
+    | {fin_omega, {R=mul_normal(N,!X),$p[R]},$p2[]}.
+fin_omega3@@ {fin_omega, $p[]}
+    :- \+($p=({mul_omega_fin(A,B,R),$pp},$ppp))
+    | {$p[]}.
+
+// 不等式制約
+
+// 上限と下限が両方ない変数を含む式を削除
+bcheck{
+    bounded0@@ bounded(!ID,!X), unbounded(!ID,!X) :- bounded(!ID,!X).
+    bounded1@@ upper(!ID,!X), lower(!ID,!X) :- bounded(!ID,!X).
+    bounded2@@ bounded(!ID,!X), upper(!ID,!X):- bounded(!ID,!X).
+    bounded3@@ bounded(!ID,!X), lower(!ID,!X):- bounded(!ID,!X).
+    bounded4@@ bounded(!ID,!X), bounded(!ID,!X):- bounded(!ID,!X).
+    unbounded1@@ upper(!ID,!X)\ :- uniq(!ID,!X) | unbounded(!ID,!X).
+    unbounded2@@ lower(!ID,!X)\ :- uniq(!ID,!X) | unbounded(!ID,!X).
+}.
+
+
+% init_bcheck@@ bcheck{$p[],@r} \ {id_m(N),$p2[]} :- uniq(M) | {id_m(N),$p2[], bcheck{$p, @r}}.
+
+upper_bound@@ bcheck{$b[], @r},{id_m(!ID), {leq,R=mul_normal(N,!X),$p[R]},$p2[]}
+    :- N > 0
+    | bcheck{upper(!ID,!X), $b[], @r}, {id_m(!ID), {leq,R=mul_bounded(N,!X),$p[R]},$p2[]}.
+lower_bound@@ bcheck{$b[], @r}, {id_m(!ID), {leq,R=mul_normal(N,!X),$p[R]},$p2[]}
+    :- N < 0
+    | bcheck{lower(!ID,!X), $b[], @r}, {id_m(!ID), {leq,R=mul_bounded(N,!X),$p[R]},$p2[]}.
+
+prop_unbounded@@ bcheck{unbounded(!ID,!X),$p[],@r}/ ,{id_m(!ID), $p2[]} 
+    :-  \+($p2=({mul_normal(A,B,R),$pp},$ppp))
+    | bcheck{$p[],@r} ,{unbounded(!X),id_m(!ID), $p2[]}.
+
+elim_unbounded@@ {unbounded(!X), {R=mul_bounded(N,!X), $p[R]}, $p2[]}
+    :- int(N)
+    | {unbounded(!X), {remove,R=mul_removed(N,!X), $p[R]},$p2[]}.
+elim_unbounded2@@ {{remove, leq(C,M), $p[C]}, $p2[]}
+    :- int(M)
+    | {{remove, leq_removed(C,M), $p[C]}, $p2[]}.
+elim_unbounded3@@ {{remove, R=mul_bounded(N,!X), $p[R]}, $p2[]}
+    :- int(N)
+    | {{remove, R=mul_removed(N,!X), $p[R]}, $p2[]}.
+    
+// 変数が1つなら決定する
+one_var1@@ {{leq(mul_bounded(N,!X),M), $p[]},$p2[]} 
+    :- N >= 1, int(M) 
+    | {upper(div(M,N)), {leq_removed(mul_removed(N,!X),M), $p[]},$p2[]}.
+one_var2@@ {{leq(mul_bounded(N,!X),M), $p[]},$p2[]} 
+    :- N =< 1, int(M)
+    | {lower(div(M,N)), {leq_removed(mul_removed(N,!X),M), $p[]},$p2[]}.
+
+div_1@@ {R=div(N,M), $p[R]} :- M*M =:= 1, NN = N/M | {R=NN, $p[R]}.
+div_upper@@ {upper(div(N,M)), $p[]} :- NN = N/M | {upper(NN), $p[]}.
+div_lower@@ {lower(div(N,M)), $p[]} :- NN = N/M+1 | {lower(NN), $p[]}.
+
+upper_elim@@ {upper(N), upper(M), $p[]} :- N >= M | {upper(M) ,$p[]}.
+lower_elim@@ {lower(N), lower(M), $p[]} :- N >= M | {lower(N), $p[]}.
+
+leq_sat@@ {upper(N), lower(M), $p[]} 
+    :- N >= M, \+($p=(upper(A),$pp)), \+($p=(lower(B),$pp))
+    | {sat, $p[]}.
+leq_unsat@@ {upper(N), lower(M), $p[]} 
+    :- N < M, \+($p=(upper(A),$pp)), \+($p=(lower(B),$pp))
+    | {unsat, $p[]}.
+
+// 消去する変数を決定
+// 膜を使うことは決定！だけど、omega を再帰的に回すのはどうしようか！
+// 上の方で定義した膜 id について uniq にすればいいか：再帰を呼ぶときは別の膜に入れて、ハイパーリンクでプロセスを接続しよう
+select_elim_var@@ {id_m(!ID), {leq, R=mul_bounded(N,!X), $p[R]},$p2[]} 
+    :- int(N), uniq(!ID)
+    | {id_m(!ID), goto_real, shadow_target(!X), {leq, R=mul_bounded(N,!X), $p[R]},$p2[]}.
+
+// 再帰（shadow）
+
+// real shadow
+
+

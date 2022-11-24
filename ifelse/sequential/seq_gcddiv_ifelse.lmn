@@ -1,0 +1,20 @@
+loop(10001).
+count(1).
+token.
+
+//ルール名からルール名の 1ブロックが or で繋がれているとする
+//初期状態の生成は、とりあえず比較しないことにする
+RuleA@@count(N), loop(M) :- N < M, A = N+1, G = N*3 | count(A), loop(M), gcd(G), mul(G).
+
+//1回失敗したら消えるルールとかほしい（ルール自体を消したい）
+RuleB@@ token \ gcd(0) :- .
+token :- token1.
+
+//中間命令では、大きい方をアトムリストの先頭に残す最適化を施している
+RuleC@@token1 \ gcd(A), gcd(B) :- B > A, N = B-A | gcd(A), gcd(N).
+token1 \ gcd(A), gcd(B) :- B < A, N = A-B | gcd(B), gcd(N).
+token1 \ gcd(A), gcd(B) :- A =:= B |gcd(A).
+token1 :- token2.
+
+RuleD@@ token2, gcd(A) \ mul(B) :- C = B/A | mul_normal(C).
+token2, gcd(A) :- int(A) | .
