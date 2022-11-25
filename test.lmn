@@ -1,6 +1,10 @@
 % a(N) :- \+(N>0) | b(N).
 {a, {a(1,2)}},{b, {b}}.
-{$p[]} :- \+($p=({a(A,B),$pp},$ppp)) | test.
+{$p[]} :- \+($p=({a(A,B),$pp[A,B]},$ppp)) | test.
+
+% {eq(add(mul(1,2),1),mul(2,3))}.
+
+% {eq(C,D), R=mul(N,M), $p[C,D,R]} :- int(N), int(M) | {eq(C,D), R=test(N,M), $p[C,D,R]}
 
 % a(5).
 

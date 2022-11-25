@@ -13,8 +13,16 @@
     % {leq, leq(1*!X+-8*!Y,-2)}.
     % {leq, leq(1*!X+2*!Y,3)}.
 
-    {leq, leq(-6*!Y,-2)}.
-    {leq, leq(4*!Y, 3)}.
+    {leq, leq(2*!X+-1*!Y,0)}.
+    {leq, leq(-8*!X+1*!Y,-2)}.
+    {leq, leq(2*!X+1*!Y,3)}.
+
+    % {leq, leq(2*!X+-1*!Y+1*!Z,0)}.
+    % {leq, leq(-8*!X+1*!Y+1*!Z,-2)}.
+    % {leq, leq(2*!X+1*!Y+-1*!Z,3)}.
+
+    % {leq, leq(-6*!Y,-2)}.
+    % {leq, leq(4*!Y, 3)}.
 }.
 
 % :- uniq | memid(0).
@@ -63,9 +71,12 @@ norm2_eq@@ {{eq(C,N), gcd(G),$p[C]},$p2[]}
 norm2_leq_plus@@ {{leq(C,N), gcd(G),$p[C]},$p2[]} 
     :- N >= 0, A = N / G , \+($p=(fin_norm_const,$pp)), \+($p=(gcd(B),$pp))
     | {{leq(C,A), gcd(G),fin_norm_const, $p[C]},$p2[]}.
-norm2_leq_minus@@ {{leq(C,N), gcd(G),$p[C]},$p2[]} 
-    :- N < 0, A = N/G -1 , \+($p=(fin_norm_const,$pp)), \+($p=(gcd(B),$pp))
+norm2_leq_minus1@@ {{leq(C,N), gcd(G),$p[C]},$p2[]} 
+    :- N < 0, A = N/G -1, N mod G =\= 0,  \+($p=(fin_norm_const,$pp)), \+($p=(gcd(B),$pp))
     | {{leq(C,A), gcd(G),fin_norm_const, $p[C]},$p2[]}.
+norm2_leq_minus2@@ {{leq(C,N), gcd(G),$p[C]},$p2[]} 
+    :- N < 0, A = N/G, N mod G =:= 0,  \+($p=(fin_norm_const,$pp)), \+($p=(gcd(B),$pp))
+    | {{leq(C,A), gcd(G),fin_norm_const, $p[C]},$p2[]}.    
 norm_fin@@ {{gcd(G),fin_norm_const, $p[]},$p2[]} :-int(G) | {{$p[]},$p2[]}. 
 
 // 係数が 1 の 変数を探す
@@ -123,10 +134,12 @@ elim_zero2@@ {{R=add(C,mul_normal(N,!X)), $p[R]},$p2[]}
 goto_gcd1@@ {{normed, R=mul_normal(N,!X), $p[R]},$p2[]} 
     :- int(N)
     | {{normed, R=mul(N,!X), $p[R]},$p2[]}. 
-goto_gcd2@@ {coef1_found,{normed, $p[]},$p2[]} 
+goto_gcd2@@ {{normed, $p[]},$p2[]} 
     :- \+($p=(mul_normal(A,B,C),$pp))
     | {{$p[]},$p2[]}. 
-
+goto_gcd3@@ {coef1_found, {$p[]},$p2[]} 
+    :- \+($p=(mul_normal(A,B,C),$pp))
+    | {{$p[]},$p2[]}.
 // 係数 1 が無かったら（上から実行しか思いついてない）
 // omega の等式除去
 no_coef1@@ {{R=mul_normal(N,!X), eq, $p[R]},$p2[]}
@@ -185,6 +198,7 @@ fin_omega3@@ {fin_omega, $p[]}
 // 不等式制約
 
 // 上限と下限が両方ない変数を含む式を削除
+// TODO：全部の式が削除されたら sat を返さないといけない
 bcheck{
     bounded0@@ bounded(!ID,!X), unbounded(!ID,!X) :- bounded(!ID,!X).
     bounded1@@ upper(!ID,!X), lower(!ID,!X) :- bounded(!ID,!X).
@@ -218,6 +232,11 @@ elim_unbounded2@@ {{remove, leq(C,M), $p[C]}, $p2[]}
 elim_unbounded3@@ {{remove, R=mul_bounded(N,!X), $p[R]}, $p2[]}
     :- int(N)
     | {{remove, R=mul_removed(N,!X), $p[R]}, $p2[]}.
+
+//全ての式が削除されたら sat
+allvar_eliminated@@ {$p[]} 
+    :- \+($p=({leq, leq(A,B), $pp[A,B]},$ppp)), \+($p=(sat,$pp)), \+($p=(upper(C),$pp)), \+($p=(lower(D),$pp)) 
+    | {sat, $p[]}.
     
 // 変数が1つなら決定する
 one_var1@@ {{leq(mul_bounded(N,!X),M), $p[]},$p2[]} 
@@ -251,5 +270,178 @@ select_elim_var@@ {id_m(!ID), {leq, R=mul_bounded(N,!X), $p[R]},$p2[]}
 // 再帰（shadow）
 
 // real shadow
+r_shadow{
+    rtarget_upper@@ shadow_target(!X)\ {leq(C,N), R=mul_bounded(M,!X), $p[C,R]}
+        :- int(N), M > 0
+        | {u_coef(M), upper(C,N,!ID), R=mul_target(M,!X), $p[C,R]}.
+    rtarget_lower@@ shadow_target(!X)\ {leq(C,N), R=mul_bounded(M,!X), $p[C,R]}
+        :- int(N), M < 0, MM = -M
+        | {l_coef(MM), lower(C,N,!ID), R=mul_target(M,!X), $p[C,R]}.
+    rmul_upper@@ {u_coef(N), R=mul_bounded(M,!X), $p[R]}
+        :- int(N), int(M)
+        | {u_coef(N), R=mul_upper(M,!X), $p[R]}.
+    rmul_lower@@ {l_coef(N), R=mul_bounded(M,!X), $p[R]}
+        :- int(N), int(M)
+        | {l_coef(N), R=mul_lower(M,!X), $p[R]}.
+    rnew_constraints@@ {u_coef(U), upper(C,N,!ID), $p[]}, {l_coef(L), lower(C2,N2,!ID2), $p2[]}\
+        :- uniq(!ID,!ID2), int(N), int(N2), int(U), int(L), ground(C), ground(C2),\+($p=(mul_bounded(A,AA,AAA),$pp)), \+($p2=(mul_bounded(B,BB,BBB),$pp))
+        | newform{u_coef(U), l_coef(L), upper(C,N), lower(C2,N2)}.
+    rmul_UcoefL@@ newform{u_coef(U), R=mul_lower(N,!X), $p[R]}
+        :- NN = U * N
+        | newform{u_coef(U), R=mul_normal(NN,!X), $p[R]}.
+    rmul_LcoefU@@ newform{l_coef(L), R=mul_upper(N,!X), $p[R]}
+        :- NN = L * N
+        | newform{l_coef(L), R=mul_normal(NN,!X), $p[R]}.
+    rjoin_newCs@@ newform{u_coef(U), l_coef(L), upper(C,N), lower(add(C2,C3),N2), $p[C,C2,C3]}
+        :- M = L*N + U*N2 // c\beta =< b\gamma を移行して、 c\beta - b\gamma =< 0 さらに、左辺の定数部分を右辺に移項したもの
+        | newform{leq, leq(add(add(C2,C),C3), M), $p[C,C2,C3]}.
+    relim_target1@@ newform{R=add(C,mul_target(N,!X)), $p[R,C]}
+        :- int(N) | newform{R=C, $p[R,C]}.
+    relim_target2@@ newform{R=add(mul_target(N,!X),C), $p[R,C]}
+        :- int(N) | newform{R=C, $p[R,C]}.
+}.
+
+do_rs1@@ {id_m(!ID), goto_real, shadow_target(!X),$p[]}, r_shadow{$p2[], @r} 
+    :- uniq(!X)
+    | {id_m(!ID), goto_real, shadow_target(!X),$p[]}, r_shadow{shadow_target(!X), mem(!ID2), $p2[], @r}, {id_m(!ID2), rs, parent(!ID)}.
+do_rs2@@ {id_m(!ID), goto_real, shadow_target(!X), {leq(C,N), $p[]}, $p2[]}, r_shadow{$p3[], @r}
+    :- int(N), \+($p=(rs,$pp)), ground(C)
+    | {id_m(!ID), goto_real, shadow_target(!X), {rs,leq(C,N), $p[]}, $p2[]}, r_shadow{{leq(C,N)}, $p3[], @r}.
+
+rshadow_fin1@@ r_shadow{shadow_target(!X), $p[], @r}/ :- r_shadow{$p[], @r}.
+rshadow_fin2@@ r_shadow{newform{$p[]}, $p2[], @r}/ :- r_shadow{{$p[]}, $p2[], @r}.
+rshadow_fin3@@ r_shadow{{$p[]}, $p2[], @r}/ :- \+($p=(leq,$pp)) | r_shadow{$p2[], @r}.
+rshadow_move@@ r_shadow{mem(!X), $p[], @r}/ , {id_m(!X), $p2[]} 
+    :- //\+($p=(newform{$pp},$ppp)) 膜名を使った ガード否定ができない？
+    | r_shadow{@r}, {id_m(!X), $p[], $p2[]}.
+
+rshadow_unsat@@ {rs, unsat, parent(!ID), $p[]} \ {id_m(!ID),goto_real, $p2[]} :- uniq(!ID) | {id_m(!ID), unsat, $p2[]}.
+rshadow_sat@@ {rs, sat, parent(!ID), $p[]} \ {id_m(!ID),goto_real, $p2[]} :- uniq(!ID) | {id_m(!ID), goto_dark, $p2[]}.
+
+// dark shadow
+d_shadow{
+    dtarget_upper@@ shadow_target(!X)\ {leq(C,N), R=mul_bounded(M,!X), $p[C,R]}
+        :- int(N), M > 0
+        | {u_coef(M), upper(C,N,!ID), R=mul_target(M,!X), $p[C,R]}.
+    dtarget_lower@@ shadow_target(!X)\ {leq(C,N), R=mul_bounded(M,!X), $p[C,R]}
+        :- int(N), M < 0, MM = -M
+        | {l_coef(MM), lower(C,N,!ID), R=mul_target(M,!X), $p[C,R]}.
+    dmul_upper@@ {u_coef(N), R=mul_bounded(M,!X), $p[R]}
+        :- int(N), int(M)
+        | {u_coef(N), R=mul_upper(M,!X), $p[R]}.
+    dmul_lower@@ {l_coef(N), R=mul_bounded(M,!X), $p[R]}
+        :- int(N), int(M)
+        | {l_coef(N), R=mul_lower(M,!X), $p[R]}.
+    dnew_constraints@@ {u_coef(U), upper(C,N,!ID), $p[]}, {l_coef(L), lower(C2,N2,!ID2), $p2[]}\
+        :- uniq(!ID,!ID2), int(N), int(N2), int(U), int(L), ground(C), ground(C2),\+($p=(mul_bounded(A,AA,AAA),$pp)), \+($p2=(mul_bounded(B,BB,BBB),$pp))
+        | newform{u_coef(U), l_coef(L), upper(C,N), lower(C2,N2)}.
+    dmul_UcoefL@@ newform{u_coef(U), R=mul_lower(N,!X), $p[R]}
+        :- NN = U * N
+        | newform{u_coef(U), R=mul_normal(NN,!X), $p[R]}.
+    dmul_LcoefU@@ newform{l_coef(L), R=mul_upper(N,!X), $p[R]}
+        :- NN = L * N
+        | newform{l_coef(L), R=mul_normal(NN,!X), $p[R]}.
+    djoin_newCs@@ newform{u_coef(U), l_coef(L), upper(C,N), lower(add(C2,C3),N2), $p[C,C2,C3]}
+        :- M = -1 * (U-1) * (L-1) + L*N + U*N2 // b\gamma - c\beta >= (c-1)(b-1) を移項して、さらに左辺の定数部分を移項したもの
+        | newform{leq, leq(add(add(C2,C),C3), M), $p[C,C2,C3]}.
+    delim_target1@@ newform{R=add(C,mul_target(N,!X)), $p[R,C]}
+        :- int(N) | newform{R=C, $p[R,C]}.
+    delim_target2@@ newform{R=add(mul_target(N,!X),C), $p[R,C]}
+        :- int(N) | newform{R=C, $p[R,C]}.
+}.
+
+do_ds1@@ {id_m(!ID), goto_dark, shadow_target(!X),$p[]}, d_shadow{$p2[], @r} 
+    :- uniq(!X)
+    | {id_m(!ID), goto_dark, shadow_target(!X),$p[]}, d_shadow{shadow_target(!X), mem(!ID2), $p2[], @r}, {id_m(!ID2), ds, parent(!ID)}.
+do_ds2@@ {id_m(!ID), goto_dark, shadow_target(!X), {leq(C,N), $p[]}, $p2[]}, d_shadow{$p3[], @r}
+    :- int(N), \+($p=(ds,$pp)), ground(C)
+    | {id_m(!ID), goto_dark, shadow_target(!X), leq_count(1), {ds,leq(C,N), $p[]}, $p2[]}, d_shadow{{leq(C,N)}, $p3[], @r}.
+leq_count@@ {leq_count(N), leq_count(M), $p[]} :- A=N+M | {leq_count(A), $p[]}.
+
+dshadow_fin1@@ d_shadow{shadow_target(!X), $p[], @r}/ :- d_shadow{$p[], @r}.
+dshadow_fin2@@ d_shadow{newform{$p[]}, $p2[], @r}/ :- d_shadow{{$p[]}, $p2[], @r}.
+dshadow_fin3@@ d_shadow{{$p[]}, $p2[], @r}/ :- \+($p=(leq,$pp)) | d_shadow{$p2[], @r}.
+dshadow_move@@ d_shadow{mem(!X), $p[], @r}/ , {id_m(!X), $p2[]} 
+    :- //\+($p=(newform{$pp},$ppp)) 膜名を使った ガード否定ができない？
+    | d_shadow{@r}, {id_m(!X), $p[], $p2[]}.
+
+dshadow_unsat@@ {ds, unsat, parent(!ID), $p[]} \ {id_m(!ID),goto_dark, $p2[]} :- uniq(!ID) | {id_m(!ID), goto_gray, $p2[]}.
+dshadow_sat@@ {ds, sat, parent(!ID), $p[]} \ {id_m(!ID),goto_dark, $p2[]} :- uniq(!ID) | {id_m(!ID), sat, $p2[]}.
+
+//exact projection check
+// 正確な射影のチェックは gray shadow でやることにした。(cb-c-b)/c において、分子が 0 になるため gray shadow が生成されず、unsat が返るはずだからである
+
+//gray shadow
+g_shadow{
+    bounds{
+        gmax_upper@@ u_coef(N), u_coef(M) :- N >= M | u_coef(N).
+    }.
+    gtarget_upper@@ start, shadow_target(!X)\ {leq(C,N), R=mul_bounded(M,!X), $p[C,R]}, bounds{$p2[], @r}
+        :- int(N), M > 0
+        | bounds{u_coef(M), $p2[], @r}.
+    gtarget_lower@@ start, shadow_target(!X)\ {leq(C,N), R=mul_bounded(M,!X), $p[C,R]}, bounds{$p2[], @r}
+        :- int(N), M < 0, MM = -M
+        | {l_coef(MM), eq(C,N), R=mul_bounded(M,!X), $p[C,R]}, bounds{$p2[], @r}.
+    guniq_upper@@ bounds{u_coef(N), $p[], @r}, {l_coef(M), $p2[]} 
+        :- int(N), int(M), \+($p=(u_coef(A),$pp)), uniq(N,M)
+        | bounds{u_coef(N), $p[], @r}, {l_coef(M),u_coef(N), $p2[]}.
+    gcalc_i@@ {l_coef(B), u_coef(C), $p[]} :- A=(B*C-C-B)/C | {i_from(0), i_to(A), $p[]}.
+    gnewconstraints@@ {i_from(F), i_to(T), eq(C,N), $p[]} 
+        :- F < T, A=F+1, ground(C), NN = N-F 
+        | {i_from(A), i_to(T), eq(C,N), $p[]}, newform{eq(C,NN)}.
+    ginit_mul@@ newform{R=mul_bounded(N,!X), $p[R]} :- int(N) | newform{R=mul_normal(N,!X), $p[R]}.
+}.
+
+do_gs1@@ {id_m(!ID), goto_gray, shadow_target(!X),$p[]}, g_shadow{$p2[], @r} 
+    :- uniq(!X)
+    | {id_m(!ID), goto_gray, shadow_target(!X),$p[]}, g_shadow{shadow_target(!X), mem(!ID2), $p2[], @r}, {id_m(!ID2), gs, parent(!ID)}.
+do_gs2@@ {id_m(!ID), goto_gray, shadow_target(!X), {leq(C,N), $p[]}, $p2[]}, g_shadow{$p3[], @r}
+    :- int(N), \+($p=(gs,$pp)), ground(C)
+    | {id_m(!ID), goto_gray, shadow_target(!X), gray_count(1), {gs,leq(C,N), $p[]}, $p2[]}, g_shadow{{leq(C,N)}, $p3[], @r}.
+gleq_count@@ {gray_count(N), gray_count(M), $p[]} :- A=N+M | {gray_count(A), $p[]}.
+start_gray@@ {goto_gray, gray_count(N), leq_count(M), $p[]}, g_shadow{$p2[], @r} 
+    :- N=:=M, \+($p=(gray_count(A),$pp)), \+($p=(leq_count(B),$pp2)) 
+    | {goto_gray, leq_count(M), $p[]}, g_shadow{start, $p2[], @r}. 
+
+gshadow_fin1@@ g_shadow{shadow_target(!X), $p[], @r}/ :- g_shadow{$p[], @r}.
+% gshadow_fin2@@ g_shadow{newform{$p[]}, $p2[], @r}/ :- g_shadow{{$p[]}, $p2[], @r}.
+gshadow_fin3@@ g_shadow{{$p[]}, $p2[], @r}/ :- \+($p=(eq,$pp)) | g_shadow{$p2[], @r}.
+gshadow_fin4@@ g_shadow{bounds{u_coef(N),@r}, $p2[], @r2}/ :- int(N) | g_shadow{bounds{@r}, $p2[], @r2}.
+gshadow_fin5@@ g_shadow{start, $p[], @r}/ :- g_shadow{$p[], @r}.
+gshadow_move@@ g_shadow{mem(!X), bounds{@r}, $p[], @r1}/ , {id_m(!X), $p2[]} 
+    :- // 本当はゴミが残っていないか確認して移動させるべき?
+    | g_shadow{bounds{@r}, @r1}, {id_m(!X), $p[], $p2[]}.
+
+// gray shadow で得た等式を元の制約集合と合体させる
+gshadow_combine@@  {id_m(!ID),goto_gray,shadow_target(!X),leq_count(N), $p[]} \ {gs, id_m(!ID2), parent(!ID), newform{$p2[]}, $p3[]}, 
+    :- int(N)
+    |  {gs, id_m(!ID2), parent(!ID), g_ps, $p3[]}, gray{parent(!ID2), $p[], {eq, $p2[]}}.
+gshadow_garbage1@@ gray{g_ps, $p[]} :- gray{$p[]}.
+gshadow_garbage2@@ gray{newform{$p[]}, $p2[]} :- gray{$p2[]}.
+gshadow_garbage3@@ gray{{rs, $p[]}, $p2[]} :- gray{{$p[]},$p2[]}.
+gshadow_garbage4@@ gray{{ds, $p[]}, $p2[]} :- gray{{$p[]},$p2[]}.
+gshadow_garbage5@@ gray{{gs, $p[]}, $p2[]} :- gray{{$p[]},$p2[]}.
+
+// なぜかleq_0 アトム が消えているので応急処置：
+// と思ったけど、表示バグの可能性がある。要確認（コピー元では leq_0 が無いのに、コピー先では勝手に復活しているように見える）
+leq_revive@@ gray{{leq(C,N), $p[C]}, $p2[]} :-int(N), \+($p=(leq,$pp)) | gray{{leq, leq(C,N), $p[C]}, $p2[]}.
+
+g_shadow_norm@@ gray{{R=mul_bounded(N,!X), $p[R]},$p2[]} :-int(N) | gray{{R=mul_normal(N,!X), $p[R]}, $p2[]}.
+
+// gray shadow を解く
+solve_gshadow@@ gray{$p[]} :- \+($p=({mul_bounded(A,B,C),$pp},$ppp)) | {$p[]}.
+
+childps_unsat1@@ {unsat, parent(!ID), $p[]}, {gs, id_m(!ID), g_ps, $p2[]} :- {gs, id_m(!ID), $p2[]}.
+childps_unsat2@@ {gs, id_m(!ID), $p2[]} :- \+($p2=(g_ps,$pp)), \+($p2=(unsat,$pp)) | {gs, id_m(!ID), unsat, $p2[]}.
+childps_sat@@ {sat, parent(!ID), $p[]}, {gs, id_m(!ID), $p2[]} :- {gs, id_m(!ID), sat, $p2[]}.
+
+gshadow_unsat@@ {gs, unsat, parent(!ID), $p[]} \ {id_m(!ID),goto_gray, $p2[]} :- uniq(!ID) | {id_m(!ID), unsat, $p2[]}.
+gshadow_sat@@ {gs, sat, parent(!ID), $p[]} \ {id_m(!ID),goto_gray, $p2[]} :- uniq(!ID) | {id_m(!ID), sat, $p2[]}.
 
 
+// とりあえず、結果だけはちゃんと出すようなルール（後で色々変える必要アリ；反例出したり）
+decide_sat@@ {sat, $p[]} :-\+($p=(rs,$pp)), \+($p=(ds,$pp)), \+($p=(gs,$pp)) | sat.
+decide_unsat@@ {unsat, $p[]} :-\+($p=(rs,$pp)), \+($p=(ds,$pp)), \+($p=(gs,$pp)) | unsat.
+
+ans_sat@@ sat, unsat :- sat.
+ans_unsat@@ unsat, unsat :- unsat.
