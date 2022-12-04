@@ -1,0 +1,48 @@
+// When should eval applied?
+//  this problem is similar to lottery3.lmn
+//  termination detection
+//  let's go next
+
+// graph representation of composition is also rewritten at hand
+// graph representation of action is also rewritten at hand
+
+ast({
+  defs("C1",pe(mss,sum({ch(0, act("tau", proc("B1"))). ch(1, act("a2", proc("A1"))).}))).
+  defs("C2",pe(mss,sum({ch(0, act("tau", proc("B2"))). ch(1, act("a3", proc("A2"))).}))).
+  defs("C3",pe(mss,sum({ch(0, act("tau", proc("B3"))). ch(1, act("a1", proc("A3"))).}))).
+  defs("A1",pe(mss,sum({ch(0, act('_'("a1"),proc("C1"))).}))).
+  defs("B1",pe(mss,sum({ch(0, act("b1",proc("C1"))).}))).
+  defs("A2",pe(mss,sum({ch(0, act('_'("a2"),proc("C2"))).}))).
+  defs("B2",pe(mss,sum({ch(0, act("b2",proc("C2"))).}))).
+  defs("A3",pe(mss,sum({ch(0, act('_'("a3"),proc("C3"))).}))).
+  defs("B3",pe(mss,sum({ch(0, act("b3",proc("C3"))).}))).
+  state(eval({}, {name(','(0,"b1")). name(','(1,"b2")). name(','(2,"b3")). }, res({name("a1"). name("a2"). name("a3"). },comp({p(proc("C1")), p(proc("A2")), p(proc("A3"))})))).
+  deflts("lts1",{state("A1"). state("B1"). state("C1"). },{name(','(0,"a1")). name(','(1,"b1")). name(','(2,"a2")). }).
+  deflts("lts2",{state("A2"). state("B2"). state("C2"). },{name(','(0,"a2")). name(','(1,"b2")). name(','(2,"a3")). }).
+  deflts("lts3",{state("A3"). state("B3"). state("C3"). },{name(','(0,"a3")). name(','(1,"b3")). name(','(2,"a1")). }).
+
+  // eval has three arguments
+  // restricted name, free name, process expression to be evaluated
+  // initially no name is restrected and free name is specified by programmer in defi
+
+  // restriction has link to names to be restricted at first, and process expression in second
+  // when evaluating restriction copy names to restricted name and continue evaluating sub expression
+  eres @@
+    R = eval({}, {$f[]}, res({$r[]}, P)) :-
+      R = res({$r[]}, eval({$r[]}, {$f[]}, P)).
+
+  ident @@
+    R = comp({p(proc(P1)), $p[]}), defs(SN, pe(mss, sum({$c[]}))) :- P1 == SN, string(P1) |
+      R = comp({p(sum({$c[]})), $p[]}), defs(SN, pe(mss, sum({$c[]}))).
+
+  ecsa @@
+    R = eval(Res, {name(','(NN, NS)). $f[].},
+          comp({p(sum({ch(CN, act(A, P)). $c[].})). $p.})) :- A == NS, int(NN), int(CN), ground(Res) |
+      R = comp({p(P), $p}).
+
+  ecsr @@
+    R = eval({name(RN), $r[]}, Free,
+          comp({p(sum({ch(CN1, act(    A1,  P1)), $c1[]})),
+                p(sum({ch(CN2, act('_'(A2), P2)), $c2[]})), $p})) :- A1 == RN, A2 == RN, int(CN1), int(CN2), ground(Free) |
+      R = comp({p(P1), p(P2), $p}).
+}).

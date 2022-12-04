@@ -1,0 +1,50 @@
+/*数式を自由に扱うための障壁
+    - 結合則
+     --プラスが入れ子になっているので，個別の要素にアクセスするのがだるい
+    -自分が左辺にあるか右辺にあるかの判断
+     -- かといって，R = N*!X+C とかすると，それが右辺にあるのか左辺にあるのかわからない
+    - 左辺にしか変数は出現しない。みたいな仮定をする必要がある（omega test のプログラムでもそうした）
+*/
+
+
+// ground の leq 
+{
+    {leq(1*!X+2*!Y+3*!Y, 1*!Z)}. 
+    //{leq(!X+2*!Y+3*!Y, !Z)}.  ←これどうなるべき？？
+    {leq(1*!Z, 2*!Y+1*!X)}.
+}.
+var(!X), var(!Y), var(!Z).
+:- uniq | id(0).
+
+delvar@@ var(!X), var(!X) :- var(!X).
+id@@ id(N), var(!X) :- NN = N+1 | id(NN), var(N,!X).
+
+one1@@ {{R = !X+C, $p[R,C]},$p2[]} :- {{R = 1*!X+C, $p[R,C]},$p2[]}.
+one2@@ {{R = C+!X, $p[R,C]},$p2[]} :- {{R = C+1*!X, $p[R,C]}, $p2[]}.
+right@@ {{leq(C,!X), $p[C]},$p2[]} :- {{leq(C,1+!X), $p[C]},$p2[]}.
+left@@ {{leq(!X,C), $p[C]},$p2[]} :- {{leq(1*!X,C), $p[C]},$p2[]}.
+
+sort@@ {{R = N*!X+M*!Y, $p[R]},$p2[]}, var(ID1,!X), var(ID2,!Y) 
+    :-ID1 > ID2, int(N), int(M) 
+    | {{R = M*!Y+N*!X, $p[R]},$p2[]}, var(ID1,!X), var(ID2,!Y).
+
+add@@ {{R = N*!X, R1=M*!X, $p[R,R1]},$p2[]} 
+    :- NN = N+M
+    | {{R = NN*!X, R1=e, $p[R,R1]},$p2[]}.
+elim1@@ {{R = e+C , $p[R,C]},$p2[]} :- {{R=C, $p[R,C]},$p2[]}.
+elim2@@ {{R = C+e , $p[R,C]},$p2[]} :- {{R=C, $p[R,C]},$p2[]}.
+elim3@@ {{leq(C,e) , $p[C]},$p2[]} :- {{leq(C,c(0)), $p[C]},$p2[]}.
+elim4@@ {{leq(C,e) , $p[C]},$p2[]} :- {{leq(C,c(0)), $p[C]},$p2[]}.
+
+const@@ {{leq(C,C1), $p[C,C1]}, $p2[]} 
+    :- \+($p=(c(A,B), $pp))
+    | {{leq(C,c(0)+C1), $p[C,C1]}, $p2[]}. 
+
+trans_left@@ {{leq(C,C1+N*!X), $p[C,C1]}, $p2[]}
+    :- NN = -N
+    | {{leq(NN*!X+C,C1), $p[C,C1]}, $p2[]}.
+
+
+
+% leq(A,B), leq(B1,A1) \ :- A=A1, B=B1, uniq(A,B) | eq(A,B).
+% leq(A,B), leq(B1,C) \ :- B=B1, uniq(A,C) | leq(A,C).

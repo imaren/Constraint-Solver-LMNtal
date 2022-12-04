@@ -1,28 +1,41 @@
+// cat omega.lmn | grep -c "@@"
 /*
     式の形， eqn(変数を含む式, 定数) の形（右辺や左辺を判断できないから，変数は左辺にあるものとするべき）
 
 */
+% {
+%     % {eq,eq(-3*!X+2*!Y,0)}.
+%     % {eq,eq(3*!X+4*!Y,3)}.
+%     % {leq,leq(1*!X+2*!Y,4)}.
+%     // TODO
+%     // 入力形式を、eq(...), leq(...) に分けるのではなくて、
+%     // expr(...) にして、膜の中に別に0引数の eq, leq アトムを持っておけばルール数減らせるかも
+%     % {leq, leq(-1*!X+2*!Y,0)}.
+%     % {leq, leq(1*!X+-8*!Y,-2)}.
+%     % {leq, leq(1*!X+2*!Y,3)}.
+
+%     {leq, leq(2*!X+-1*!Y,0)}.
+%     {leq, leq(-8*!X+1*!Y,-2)}.
+%     {leq, leq(2*!X+1*!Y,3)}.
+
+%     % {leq, leq(2*!X+-1*!Y+1*!Z,0)}.
+%     % {leq, leq(-8*!X+1*!Y+1*!Z,-2)}.
+%     % {leq, leq(2*!X+1*!Y+-1*!Z,3)}.
+
+%     % {leq, leq(-6*!Y,-2)}.
+%     % {leq, leq(4*!Y, 3)}.
+% }.
+% {
+%     {eq, eq(4*!X+2*!Y,3)}.
+%     % {eq, eq(1*!X+1*!Y,2)}.
+% }.
 {
-    % {eq,eq(-3*!X+2*!Y,0)}.
-    % {eq,eq(3*!X+4*!Y,3)}.
-    % {leq,leq(1*!X+2*!Y,4)}.
-    // TODO
-    // 入力形式を、eq(...), leq(...) に分けるのではなくて、
-    // expr(...) にして、膜の中に別に0引数の eq, leq アトムを持っておけばルール数減らせるかも
-    % {leq, leq(-1*!X+2*!Y,0)}.
-    % {leq, leq(1*!X+-8*!Y,-2)}.
-    % {leq, leq(1*!X+2*!Y,3)}.
-
-    {leq, leq(2*!X+-1*!Y,0)}.
-    {leq, leq(-8*!X+1*!Y,-2)}.
-    {leq, leq(2*!X+1*!Y,3)}.
-
-    % {leq, leq(2*!X+-1*!Y+1*!Z,0)}.
-    % {leq, leq(-8*!X+1*!Y+1*!Z,-2)}.
-    % {leq, leq(2*!X+1*!Y+-1*!Z,3)}.
-
-    % {leq, leq(-6*!Y,-2)}.
-    % {leq, leq(4*!Y, 3)}.
+    {leq, leq(2*!X+-1*!Y+3*!Z,0)}.
+    {leq, leq(-8*!X+1*!Y+2*!Z,-2)}.
+    {leq, leq(2*!X+1*!Y+-4*!Z,3)}.
+    {leq, leq(-5*!X+-1*!Y+-2*!Z,4)}.
+    % {leq, leq(2*!X+-3*!Y+-3*!Z,4)}.
+    % {leq, leq(-3*!X+2*!Y+3*!Z,1)}.
 }.
 
 % :- uniq | memid(0).
@@ -41,12 +54,15 @@ symmetric_mod2@@ {{R=symod(N,M),$p[R]},$p2[]}
     :- A = (N mod M)-M, 2*A >= M | {{R=A,$p[R]},$p2[]}. 
 add_i@@ {{R=add(N,M),$p[R]},$p2[]} :- A=N+M | {{R=A,$p[R]},$p2[]}.
 
-// 変数が1つなら決定する
+// 変数が1つなら決定する(等式時点で unsat なら論理積ごと unsat, 等式が sat なら 不等式制約にうつる．（不等式が無ければ下の方のルールで sat になる）)
 decide_eq1@@ {{eq(mul_normal(N,!X),M),$p[]},$p2[]}
-    :- M mod N =:= 0, A = M/N | {{eq_removed(mul_removed(1,!X),A),sat,$p[]},$p2[]}.
+    :- N=\=0, M mod N =:= 0, A = M/N | {{eq_removed(mul_removed(1,!X),A),sat,$p[]},$p2[]}.
 decide_eq2@@ {{eq(mul_normal(N,!X),M),$p[]},$p2[]}
-    :- M mod N =\= 0 | {{eq_removed(mul_removed(N,!X),M),unsat,$p[]},$p2[]}. 
-
+    :- N=\=0, M mod N =\= 0 | {unsat,{eq_removed(mul_removed(N,!X),M),$p[]},$p2[]}. 
+decide_eq3@@ {{eq(mul_normal(N,!X),M),$p[]},$p2[]}
+    :- N=:=0, M=:=0 | {{eq_removed(mul_removed(0,!X),M),sat,$p[]},$p2[]}.
+decide_eq4@@ {{eq(mul_normal(N,!X),M),$p[]},$p2[]}
+    :- N=:=0, M=\=0 | {unsat,{eq_removed(mul_removed(0,!X),M),$p[]},$p2[]}.
 // normalization
 // gcd 
 gcd_prep1@@ {{R = mul(N,!X),$p[R]},$p2[]}
@@ -61,7 +77,7 @@ gcd2@@ {{gcd(N), gcd(M),$p[]},$p2[]} :- N =< M, G = M-N,\+($p=(R=mul(A,B),$pp)) 
 // devide by gcd
 n_unsat@@ {{eq(C,N),gcd(G), $p[C]},$p2[]} 
     :- N mod G =\= 0, \+($p=(gcd(X),$pp)), \+($p=(fin_norm_const,$pp))
-    | {{unsat},$p2[]}.
+    | {unsat,$p2[]}.
 norm1@@ {{gcd(G), R = mul_WaitDivGcd(N,!X),$p[R]},$p2[]}
     :- A = N / G,  \+($p=(gcd(B),$pp))
     | {{gcd(G),R = mul_normal(A,!X),$p[R]},$p2[]}.
@@ -77,7 +93,7 @@ norm2_leq_minus1@@ {{leq(C,N), gcd(G),$p[C]},$p2[]}
 norm2_leq_minus2@@ {{leq(C,N), gcd(G),$p[C]},$p2[]} 
     :- N < 0, A = N/G, N mod G =:= 0,  \+($p=(fin_norm_const,$pp)), \+($p=(gcd(B),$pp))
     | {{leq(C,A), gcd(G),fin_norm_const, $p[C]},$p2[]}.    
-norm_fin@@ {{gcd(G),fin_norm_const, $p[]},$p2[]} :-int(G) | {{$p[]},$p2[]}. 
+norm_fin@@ {{gcd(G),fin_norm_const, $p[]},$p2[]} :-int(G), \+($p=( mul_WaitDivGcd(A,B,C),$pp)) | {{$p[]},$p2[]}. 
 
 // 係数が 1 の 変数を探す
 find_coef_1@@ {{R = mul_normal(N,!X), eq(E,M), $p[R,E]},$p2[]} 
@@ -169,7 +185,7 @@ new_var@@ {abs_min(N,!X),$p[]}
 
 // 新しい変数の代入
 id@@ :- uniq | id(0).
-omega_right@@ id(I),{new_var(A,!X,!S),{R=mul_omega(N,!X),$p[R]},$p2[]}
+omega_sigma@@ id(I),{new_var(A,!X,!S),{R=mul_omega(N,!X),$p[R]},$p2[]}
     :- M = -N, int(A), II = I+1
     | id(II),{new_var(A,!X,!S),{newassign(I),R=mul_omega_fin(M,!S),$p[R]},$p2[]}.
 omega_left1@@  {new_var(M,!X,!S),{newassign(I),R=mul_omega(N,!Y),$p[R]},$p2[]}
@@ -198,7 +214,6 @@ fin_omega3@@ {fin_omega, $p[]}
 // 不等式制約
 
 // 上限と下限が両方ない変数を含む式を削除
-// TODO：全部の式が削除されたら sat を返さないといけない
 bcheck{
     bounded0@@ bounded(!ID,!X), unbounded(!ID,!X) :- bounded(!ID,!X).
     bounded1@@ upper(!ID,!X), lower(!ID,!X) :- bounded(!ID,!X).
@@ -235,7 +250,7 @@ elim_unbounded3@@ {{remove, R=mul_bounded(N,!X), $p[R]}, $p2[]}
 
 //全ての式が削除されたら sat
 allvar_eliminated@@ {$p[]} 
-    :- \+($p=({leq, leq(A,B), $pp[A,B]},$ppp)), \+($p=(sat,$pp)), \+($p=(upper(C),$pp)), \+($p=(lower(D),$pp)) 
+    :- \+($p=({leq, leq(A,B), $pp[A,B]},$ppp)), \+($p=(sat,$pp)), \+($p=(unsat,$pp)), \+($p=(upper(C),$pp)), \+($p=(lower(D),$pp)) 
     | {sat, $p[]}.
     
 // 変数が1つなら決定する
@@ -444,4 +459,5 @@ decide_sat@@ {sat, $p[]} :-\+($p=(rs,$pp)), \+($p=(ds,$pp)), \+($p=(gs,$pp)) | s
 decide_unsat@@ {unsat, $p[]} :-\+($p=(rs,$pp)), \+($p=(ds,$pp)), \+($p=(gs,$pp)) | unsat.
 
 ans_sat@@ sat, unsat :- sat.
+ans_sat1@@ sat, sat :- sat.
 ans_unsat@@ unsat, unsat :- unsat.
