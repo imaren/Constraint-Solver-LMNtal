@@ -1,0 +1,46 @@
+// CHR 本の方法ではなく、単に変数の割当を1つにしてみて、正しくなかったら消すのを繰り返す
+// 全ての queen は別のものとして扱うバージョン
+// 例：in([0,0],!X) と in([0,0],!Y) は変数が違うので別のものとして扱う
+// 3*3 の盤に2つの queen を置こうとしてもちゃんと全部の割当を計算してくれるが、その分計算量は多い
+{
+    solve(4,[!X,!Y,!Z,!A]).
+
+    empty1@@ queens([]) :-.
+    empty2@@ safe(!X,[],N) :- int(N) |.
+
+    in_false@@ in([],!X) :- false.
+
+    // [0,0]~[N-1,N-1] をそれぞれの変数に割り当て
+    makedomain@@ makedomains(N,[!Q|Qs])
+        :-int(N), NN=N*N-1
+        | in([],0,NN,N,!Q), makedomains(N,Qs).
+    fin_makedomain@@ makedomains(N,[]):-int(N)|.
+    % fin_makedomain@@ makedomains(I,N,[]):-int(I), int(N)|.
+    // in([列,行],変数)
+    in_list1@@ in(L,Min,Max,N,!X) :- Min =< Max, NN=Max-1, A=Max/N, B=Max mod N
+        | in([[A,B]|L],Min,NN,N,!X).
+    in_list2@@ in(L,Min,Max,N,!X) :- Min > Max, int(N) | in(L,!X).
+
+    //chr bool p.202
+    enum([]) :-.
+    enum([!X|L]) :- indomain(!X), enum(L).
+
+    //chr book とは内容が違う（変更している）
+    start@@ solve(N,Qs) 
+        :- int(N), ground(Qs)
+        | makedomains(N,Qs), enum(Qs).
+        
+    false_row@@ in([C,R],!X), in([C1,R1],!Y) :- R =:= R1, int(C), int(C1) | false.
+    false_column@@ in([C,R],!X), in([C1,R1],!Y) :- C =:= C1, int(R), int(R1) | false.
+    false_dr@@ in([C,R],!X), in([C1,R1],!Y) :- R1-R =:= C1-C | false.
+    false_dl@@ in([C,R],!X), in([C1,R1],!Y) :- -(R1-R) =:= C1-C | false.
+
+}.
+
+false@@ {false, $p[], @r} :- .
+indomain@@ {indomain(!X), in([[R,C]|L],!X), $p[], @r} 
+    :- ground(L), int(R), int(C)
+    | {in([R,C],!X), $p[], @r},{indomain(!X),in(L,!X), $p[], @r}.
+
+% count_test@@ {count(N,M), $p[], @r} :- N < M |.
+

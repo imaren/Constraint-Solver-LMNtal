@@ -1,0 +1,112 @@
+{
+    solve(3,[!X,!Y,!Z]).
+    
+    typedef dlistr(T, H) {
+    H = T.
+    H = '.'(A,B) :- unary(A), dlistr(T,B).
+    H = r(A,B) :- unary(A), dlistr(T,B).
+    }.
+    typedef dlist(T, H) {
+    H = T.
+    H = '.'(A,B) :- unary(A), dlist(T,B).
+    }.
+    
+    in_false@@ in([],!X) :- false.
+
+    empty1@@ queens([]) :-.
+    empty2@@ safe(!X,[],N) :- int(N) |.
+
+    //chr book に書いてないけど想像で補完
+    makedomain@@ makedomains(N,[!Q|Qs])
+        :-int(N), NN=N*N
+        | in(1,NN,!Q), makedomains(N,Qs).
+        makedomain@@ makedomains(I,N,[!Q|Qs])
+        :-int(N), II= I+1, I1 = I*N-N+1, N1 = I*N
+        | in(I1,N1,!Q), makedomains(II,N,Qs).
+    fin_makedomain@@ makedomains(N,[]):-int(N)|.
+    fin_makedomain@@ makedomains(I,N,[]):-int(I), int(N)|.
+    in_list1@@ in(Min,Max,!X) :- Min < Max, N=Max-1
+        | in([Max],Min,N,!X).
+    in_list2@@ in(L,Min,Max,!X) :- Min < Max, N=Max-1
+        | in([Max|L],Min,N,!X).
+    in_list3@@ in(L,Min,Max,!X) :- Min =:= Max | in([Max|L],!X).
+
+    //chr bool p.202
+    enum([]) :-.
+    enum([!X|L]) :- indomain(!X), enum(L).
+
+    //chr book p.214
+    start@@ solve(N,Qs) 
+        :- int(N), ground(Qs)
+        | makedomains(N,Qs), queens(Qs), enum(Qs), count(N,N).
+    queens@@ queens([!Q|Qs])
+        :- ground(Qs)
+        | safe(!Q,Qs,1), queens(Qs).
+    safe@@ safe(!X,[!Y|Qs],N)
+        :- int(N), NN=N+1
+        | noattack(!X,!Y,N), safe(!X,Qs,NN).
+
+    // remove の引数に元の制約を持たせておいて、 remove が false になったときに
+    // 元の制約を復活させないといけない
+    // TODO
+    noattack1@@ noattack(!X,!Y,N), in([V],!X), in(D,!Y)
+        :- VV=V+N, VVV=V-N, uniq(!X,!Y,N,V,D)
+        | in(remove(D,[V,VV,VVV], wait, noattack(!X,!Y,N), in([V],!X), in(D,!Y)),calc,!Y).
+    noattack2@@ noattack(!Y,!X,N), in([V],!X), in(D,!Y)
+        :- VV=V+N, VVV=V-N, uniq(!X,!Y,N,V,D) 
+        | in(remove(D,[V,VV,VVV], wait, noattack(!X,!Y,N), in([V],!X), in(D,!Y)),calc,!Y).
+
+    remove1@@ R=remove(S,'.'(V,VV), Result, Na, In1, In2)
+        :- R=remove(r(V,S),VV, Result, Na, In1, In2).
+
+    remove2@@ R=r(V,'.'(N,T)) :- V =\= N | R='.'(N,r(V,T)).
+    remove3@@ R=r(V,'.'(N,T)) :- V =:= N | R=r(true,T).
+    remove4@@ R=r(V,'[]') :- int(V) | R='[]'.
+    remove_true@@ R=remove($d1[T],L, Result, Na, In1, In2), 
+        T = r(true,$d2[T1]), T1 = '[]'
+        :- dlistr($d1), dlistr($d2), unary(Result)
+        | R=remove($d1[T],L, true, Na, In1, In2), T = $d2[T1], T1 = '[]'.
+    remove_false@@ R=remove($d[T],[], wait, noattack(!X,!Y,N), in([V],!X), in(D,!Y)), T='[]'
+        :- dlist($d)
+        | R=remove(false, noattack(!X,!Y,N), in([V],!X), in(D,!Y)).
+    remove_fin@@ in(remove($d[T],[], true, noattack(!X,!Y,N), in([V],!X), in(D,!Y)),calc,!Y),T = '[]', count(C,C1)
+        :- dlist($d), int(N), int(V), ground(D), CC = C-1
+        |  in($d[T],!Y), T='[]', count(C,C1).
+    remove_fin2@@ in(remove(false, noattack(!X,!Y,N), in([V],!X), in(D,!Y)),calc,!Y)
+        :- noattack(!X,!Y,N), in([V],!X), in(D,!Y).
+
+    % remove_true0@@ R=r(V,true(T)) :- R=true(r(V,T)).
+    % remove_true1@@ R='.'(N,true(T)) :- R=true('.'(N,T)).
+    % remove_true2@@ R=remove(true(S),L, Result, noattack(!X,!Y,N), in([V],!X), in(D,!Y))
+    %     :- unary(Result)
+    %     | R=remove(S,L, true, noattack(!X,!Y,N), in([V],!X), in(D,!Y)).
+        
+
+}.
+
+indomain@@ {indomain(!X), in('.'(V,'.'(VV,L)),!X), $p[], @r} 
+    :- ground(L), int(V), int(VV)
+    | {in([V],!X), $p[], @r},{indomain(!X),in('.'(VV,L),!X), $p[], @r}.
+
+false@@ {false, $p[], @r} :- .
+
+count_test@@ {count(N,M), $p[], @r} :- N < M |.
+
+
+
+//chr book に書いてないけど想像で補完
+% makedomain@@ {makedomains(N,[!Q|Qs]), $p[Qs]}
+%     :- int(N), NN=N*N
+%     | {in(1,NN,!Q), makedomains(N,Qs), $p[Qs]}.
+
+% //chr book p.214
+% start@@ {solve(N,Qs), $p[]} 
+%     :- int(N), ground(Qs)
+%     | {makedomains(N,Qs), queens(Qs), enum(Qs), $p[]}.
+% queens@@ {queens([!Q|Qs]), $p[]}
+%     :- ground(Qs)
+%     | {safe(!Q,Qs,1), queens(Qs), $p[]}.
+
+% safe@@ {safe(!X,[!Y|Qs],N), $p[]}
+%     :- int(N), NN=N+1
+%     | {noattack(!X,!Y,N), safe(!X,Qs,NN), $p[]}.

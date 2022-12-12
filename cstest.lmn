@@ -1,0 +1,42 @@
+{
+typedef dlistr(T, H) {
+  H = T.
+  H = '.'(A,B) :- unary(A), dlistr(T,B).
+  H = r(A,B) :- unary(A), dlistr(T,B).
+}.
+typedef dlist(T, H) {
+  H = T.
+  H = '.'(A,B) :- unary(A), dlist(T,B).
+}.
+
+% isDlist @@
+% dlistp($x[T], T) :- dlist($x) | yes.
+% % dlistp(X, X), dlistp(a, a), dlistp([1, 2 | Y], Y).
+
+dlistp($x[T]), T = '[]' :- dlist($x) | yeees.
+dlistp('.'(1,r(3,'.'(2,'[]')))).
+
+remove2@@ R=r(V,'.'(N,T)) :- V =\= N | R='.'(N,r(V,T)).
+remove3@@ R=r(V,'.'(N,T)) :- V =:= N | R=r(true,T).
+remove4@@ R=r(V,'[]') :- int(V) | R='[]'.
+% remove_true@@ R=remove($d1[T],L, Result, noattack(!X,!Y,N), in([V],!X), in(D,!Y)), 
+%     T = r(true,$d2[T1]), T1 = '[]'
+%     :- dlistr($d1), dlistr($d2), unary(Result)
+%     | R=remove($d1[T],L, true, noattack(!X,!Y,N), in([V],!X), in(D,!Y)), T = $d2[T1], T1 = '[]'.
+
+remove_true@@ R=remove($d1[T],L, Result, Na, In1, In2), 
+        T = r(true,$d2[T1]), T1 = '[]'
+        :- dlistr($d1), dlistr($d2), unary(Result)
+        | R=remove($d1[T],L, true, Na, In1, In2), T = $d2[T1], T1 = '[]'.
+
+ in(remove(r(1,r(2,r(1,'.'(1,'.'(2,'.'(1,'[]')))))),[], wait, noattack(!X,!Y,0), in([0],!X), in([0,0],!Y)),a,!Y). 
+  % in(remove(r(6,r(8,r(true,'.'(8,'.'(9,'[]'))))),[],wait,noattack(!H5,!H7,1),in([7],!H5),in([7,8,9],!H7)),a,!H7). 
+
+  %  in(remove(r(6,r(8,r(true,[8,9]))),[],wait,noattack(!H5,!H7,1),in([7],!H5),in([7,8,9],!H7)),calc,!H7). 
+}.
+
+% exchangesort @@
+% sort($d1[T1]), T1 = [$n | $d2[T2]], T2 = [$m | T]
+%   :- $n > $m, dlist($d1), dlist($d2)
+%   | sort($d1[T1]), T1 = [$m | $d2[T2]], T2 = [$n | T].
+% sort([1, 5, 3, 2, 3, 1, 5, 4]).
